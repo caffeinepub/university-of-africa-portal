@@ -11,6 +11,8 @@ import { AdmissionStatus } from '../../backend';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Skeleton } from '../../components/ui/skeleton';
 import { Button } from '../../components/ui/button';
+import AdminSetupCard from '../../components/admin/AdminSetupCard';
+import AdminProfileCard from '../../components/admin/AdminProfileCard';
 import {
   Users,
   BookOpen,
@@ -23,7 +25,6 @@ import {
   AlertCircle,
   RefreshCw,
   ChevronRight,
-  Settings,
 } from 'lucide-react';
 
 const sidebarLinks = [
@@ -65,6 +66,9 @@ export default function AdminDashboard() {
   const pendingAdmissions = admissions.filter(
     (a) => String(a.status) === AdmissionStatus.pending
   ).length;
+
+  // Determine if admin setup is needed (profile exists but role check)
+  const needsSetup = profileFetched && !userProfile;
 
   // Loading state
   if (profileLoading || !profileFetched) {
@@ -113,6 +117,42 @@ export default function AdminDashboard() {
     );
   }
 
+  // No profile yet — show setup UI
+  if (needsSetup) {
+    return (
+      <div className="flex min-h-[calc(100vh-4rem)]">
+        <aside className="hidden md:flex w-64 flex-col border-r border-border bg-card p-4 gap-1">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-2 mb-2">
+            Admin Panel
+          </p>
+          {sidebarLinks.map((link) => {
+            const Icon = link.icon;
+            return (
+              <button
+                key={link.href}
+                onClick={() => navigate({ to: link.href })}
+                className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors text-left"
+              >
+                <Icon className="h-4 w-4 shrink-0" />
+                {link.label}
+              </button>
+            );
+          })}
+        </aside>
+        <div className="flex-1 p-6 space-y-6 overflow-auto max-w-2xl">
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">Admin Dashboard</h1>
+            <p className="text-muted-foreground text-sm mt-1">
+              Complete your admin account setup to get started.
+            </p>
+          </div>
+          <AdminSetupCard />
+          <AdminProfileCard />
+        </div>
+      </div>
+    );
+  }
+
   if (!userProfile) return null;
 
   return (
@@ -140,13 +180,17 @@ export default function AdminDashboard() {
       {/* Main content */}
       <div className="flex-1 p-6 space-y-6 overflow-auto">
         {/* Header */}
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">
-            Admin Dashboard
-          </h1>
-          <p className="text-muted-foreground text-sm mt-1">
-            Welcome, {userProfile.name} · {userProfile.email}
-          </p>
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">Admin Dashboard</h1>
+            <p className="text-muted-foreground text-sm mt-1">
+              Welcome, {userProfile.name} · {userProfile.email}
+            </p>
+          </div>
+          {/* Compact profile card in header area */}
+          <div className="sm:w-72 shrink-0">
+            <AdminProfileCard />
+          </div>
         </div>
 
         {/* Stats */}

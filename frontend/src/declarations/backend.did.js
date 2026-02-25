@@ -138,6 +138,7 @@ export const idlService = IDL.Service({
   'applyForHostel' : IDL.Func([IDL.Text, IDL.Text], [IDL.Nat], []),
   'assignAccessRole' : IDL.Func([IDL.Principal, UserRole__1], [], []),
   'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole__1], [], []),
+  'bootstrapAdmin' : IDL.Func([IDL.Text, IDL.Text, IDL.Text], [], []),
   'checkAdmissionStatus' : IDL.Func(
       [IDL.Text],
       [IDL.Opt(AdmissionStatus)],
@@ -369,6 +370,7 @@ export const idlFactory = ({ IDL }) => {
     'applyForHostel' : IDL.Func([IDL.Text, IDL.Text], [IDL.Nat], []),
     'assignAccessRole' : IDL.Func([IDL.Principal, UserRole__1], [], []),
     'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole__1], [], []),
+    'bootstrapAdmin' : IDL.Func([IDL.Text, IDL.Text, IDL.Text], [], []),
     'checkAdmissionStatus' : IDL.Func(
         [IDL.Text],
         [IDL.Opt(AdmissionStatus)],

@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "projectStateVersion": 13,
+  "projectStateVersion": 19,
   "summary": "Building a full university portal (similar to University of Africa, Toru-Orua) on the Internet Computer stack with React + Motoko + Internet Identity + Stripe. Includes role-based authentication (Admin, Student, Staff, Parent), public homepage, admissions module, student dashboard, parent portal, admin panel, hostel application, and payment integration.",
   "architectural_notes": [
     "Backend: Motoko on Internet Computer (IC) canisters",
@@ -10,7 +10,8 @@
     "Responsive, mobile-friendly UI with clear role-based navigation",
     "Exams & Records is a separate portal/site for results upload, distinct from the main university portal",
     "Protected navigation items must be conditionally rendered based on authentication state — unauthenticated users must never see role-specific menu options",
-    "Backend admin role checks must verify the caller's principal against the stored admin profile — mismatches cause false 'Unauthorized' errors even for valid admins"
+    "Backend admin role checks must verify the caller's principal against the stored admin profile — mismatches cause false 'Unauthorized' errors even for valid admins",
+    "Role-specific login entry points: each portal category (Admin, Staff, Student, Parent) has a dedicated pre-login landing/login page that encodes the intended role — after Internet Identity authentication the user is automatically associated with that role"
   ],
   "known_issues": [
     "Course addition is broken — users cannot add courses; needs full fix across admin panel and course registration",
@@ -19,7 +20,7 @@
     "Profiles are not loading after login — user profile data fails to fetch/display post-authentication for all roles",
     "Admin gets 'Unauthorized — admin only' error when trying to add fees or perform admin actions despite being registered as admin — backend role check is not recognising the principal correctly"
   ],
-  "isFixRequest": true,
+  "isFixRequest": false,
   "existing_features": [
     {
       "id": "feature-design-and-implement-a-visually-compelling-public-homepage-with-a-deep-navy-and-gold-academic-theme-clean-typography-bold-hero-section-with-university-name-and-tagline-navigation-bar-with-links-to-student-staff-parent-and-partner-portals-sections-for-about-introduction-available-programmes-admission-notices-and-acceptance-process-overview-and-a-footer-with-contact-info-and-quick-links",
@@ -154,6 +155,70 @@
       "title": "In the frontend Admin Panel pages (FeeManagementPage, ProgrammeManagementPage, StudentManagementPage, ResultsManagementPage, MessagingPage, HostelManagementPage), surface a clear, human-readable error toast or inline message when a backend mutation returns an authorization error, so admins know immediately if the session/actor has expired and they need to re-authenticate, rather than silently failing or showing a raw error string.",
       "reqIds": [
         "REQ-25"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-in-the-frontend-ensure-the-authenticated-actor-passed-to-all-admin-mutation-hooks-addfeeitem-addcourse-registerstudent-postresult-sendannouncement-approvehostelapplication-rejecthostelapplication-updateadmissionstatus-etc-is-the-fully-authenticated-actor-created-after-internet-identity-login-not-the-anonymous-actor-the-useactor-hook-must-supply-the-identity-authenticated-actor-to-every-mutation-on-admin-pages-and-the-actor-must-be-re-initialised-if-the-identity-changes",
+      "title": "In the frontend, ensure the authenticated actor passed to all admin mutation hooks (addFeeItem, addCourse, registerStudent, postResult, sendAnnouncement, approveHostelApplication, rejectHostelApplication, updateAdmissionStatus, etc.) is the fully authenticated actor created after Internet Identity login — not the anonymous actor. The useActor hook must supply the identity-authenticated actor to every mutation on admin pages, and the actor must be re-initialised if the identity changes.",
+      "reqIds": [
+        "REQ-28"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-ensure-every-admin-panel-page-feemanagementpage-programmemanagementpage-studentmanagementpage-resultsmanagementpage-messagingpage-hostelmanagementpage-admissionsmanagementpage-staffmanagementpage-is-wrapped-with-the-roleguard-component-requiring-the-admin-role-and-that-the-roleguard-reads-the-profile-from-the-backend-using-the-authenticated-principal-not-from-stale-local-state-or-cache-from-a-previous-session",
+      "title": "Ensure every admin panel page (FeeManagementPage, ProgrammeManagementPage, StudentManagementPage, ResultsManagementPage, MessagingPage, HostelManagementPage, AdmissionsManagementPage, StaffManagementPage) is wrapped with the RoleGuard component requiring the 'admin' role, and that the RoleGuard reads the profile from the backend using the authenticated principal — not from stale local state or cache from a previous session.",
+      "reqIds": [
+        "REQ-29"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-after-a-successful-admin-action-add-fee-add-course-register-student-post-result-approve-reject-admission-approve-reject-hostel-application-send-announcement-display-a-clear-success-toast-notification-and-immediately-invalidate-and-refetch-the-relevant-react-query-list-queries-so-the-updated-data-appears-in-the-ui-without-a-full-page-reload",
+      "title": "After a successful admin action (add fee, add course, register student, post result, approve/reject admission, approve/reject hostel application, send announcement), display a clear success toast notification and immediately invalidate and refetch the relevant React Query list queries so the updated data appears in the UI without a full page reload.",
+      "reqIds": [
+        "REQ-30"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-in-the-frontend-add-a-visible-claim-admin-account-button-or-setup-prompt-on-the-admin-dashboard-or-a-dedicated-setup-page-at-admin-setup-that-is-shown-only-when-no-admin-profile-exists-yet-when-clicked-it-calls-the-bootstrapadmin-backend-function-using-the-fully-authenticated-actor-not-the-anonymous-actor-to-register-the-currently-logged-in-internet-identity-principal-as-the-admin-on-success-display-a-clear-confirmation-toast-admin-account-successfully-created-and-redirect-to-the-admin-dashboard",
+      "title": "In the frontend, add a visible 'Claim Admin Account' button or setup prompt on the Admin Dashboard (or a dedicated setup page at /admin/setup) that is shown only when no admin profile exists yet. When clicked, it calls the bootstrapAdmin backend function using the fully authenticated actor (not the anonymous actor) to register the currently logged-in Internet Identity principal as the admin. On success, display a clear confirmation toast ('Admin account successfully created') and redirect to the Admin Dashboard.",
+      "reqIds": [
+        "REQ-32"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-on-the-admin-dashboard-homepage-and-the-admin-setup-page-display-the-currently-authenticated-user-s-real-internet-identity-principal-and-their-stored-profile-name-prominently-in-the-admin-profile-card-so-the-admin-can-confirm-their-account-identity-at-a-glance-label-it-clearly-as-your-admin-principal-alongside-the-display-name-stored-in-their-profile",
+      "title": "On the Admin Dashboard homepage and the admin setup page, display the currently authenticated user's real Internet Identity principal and their stored profile name prominently in the admin profile card, so the admin can confirm their account identity at a glance. Label it clearly as 'Your Admin Principal' alongside the display name stored in their profile.",
+      "reqIds": [
+        "REQ-33"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-create-a-portal-selection-page-at-portal-or-as-a-prominent-section-on-the-homepage-that-displays-four-distinct-portal-entry-cards-student-portal-staff-portal-admin-portal-and-parent-portal-each-card-must-have-a-clear-label-a-brief-description-of-the-portal-and-a-login-or-access-portal-button-clicking-a-card-navigates-the-visitor-to-that-role-s-dedicated-login-page",
+      "title": "Create a Portal Selection page at /portal (or as a prominent section on the homepage) that displays four distinct portal entry cards: Student Portal, Staff Portal, Admin Portal, and Parent Portal. Each card must have a clear label, a brief description of the portal, and a 'Login' or 'Access Portal' button. Clicking a card navigates the visitor to that role's dedicated login page.",
+      "reqIds": [
+        "REQ-34"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-create-four-dedicated-role-specific-login-pages-login-student-login-staff-login-admin-and-login-parent-each-branded-with-the-role-name-and-a-short-description-e-g-student-portal-access-your-courses-results-and-fee-statements-each-page-must-show-an-login-with-internet-identity-button-that-triggers-the-internet-identity-login-flow-after-successful-login-if-the-user-already-has-a-profile-with-the-matching-role-redirect-them-directly-to-their-role-dashboard-if-the-user-has-no-profile-yet-pre-select-the-matching-role-in-the-profilesetupmodal-so-the-role-dropdown-defaults-to-the-role-corresponding-to-the-login-page-they-used-before-prompting-them-to-complete-profile-setup-this-eliminates-the-need-for-the-user-to-manually-choose-their-role-after-logging-in-via-a-role-specific-portal-page",
+      "title": "Create four dedicated role-specific login pages — /login/student, /login/staff, /login/admin, and /login/parent — each branded with the role name and a short description (e.g., 'Student Portal — Access your courses, results, and fee statements'). Each page must show an 'Login with Internet Identity' button that triggers the Internet Identity login flow. After successful login, if the user already has a profile with the matching role, redirect them directly to their role dashboard. If the user has no profile yet, pre-select the matching role in the ProfileSetupModal (so the role dropdown defaults to the role corresponding to the login page they used) before prompting them to complete profile setup. This eliminates the need for the user to manually choose their role after logging in via a role-specific portal page.",
+      "reqIds": [
+        "REQ-35"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-update-the-public-homepage-and-the-navigation-component-so-that-the-portal-links-student-portal-staff-portal-admin-portal-parent-portal-that-were-previously-pointing-directly-to-dashboard-routes-now-point-to-the-corresponding-role-specific-login-pages-login-student-login-staff-login-admin-login-parent-for-unauthenticated-visitors-for-already-authenticated-users-with-a-confirmed-role-these-links-should-still-navigate-directly-to-their-respective-dashboards",
+      "title": "Update the public homepage and the Navigation component so that the portal links (Student Portal, Staff Portal, Admin Portal, Parent Portal) that were previously pointing directly to dashboard routes now point to the corresponding role-specific login pages (/login/student, /login/staff, /login/admin, /login/parent) for unauthenticated visitors. For already-authenticated users with a confirmed role, these links should still navigate directly to their respective dashboards.",
+      "reqIds": [
+        "REQ-36"
       ],
       "version": 1
     }
@@ -317,6 +382,42 @@
       "reqIds": [
         "REQ-24"
       ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-25",
+      "summary": "Audit every admin-gated function in backend/main.mo (addFeeItem, addCourse, registerStudent, updateAdmissionStatus, postResult, sendAnnouncement, approveHostelApplication, rejectHostelApplication, updateStudentStatus, and all other privileged operations) and replace all ad-hoc role checks with a single shared isAdmin(caller: Principal): Bool helper that reads exclusively from the same stable profiles HashMap/TrieMap used during profile registration. The helper must return true if and only if a stored profile exists for that principal with role = #admin. Remove any hardcoded principal whitelists, environment-variable checks, or duplicate inline role checks that could diverge from this store.",
+      "reqIds": [
+        "REQ-26"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-26",
+      "summary": "Fix the profile registration flow in backend/main.mo so that when saveCallerUserProfile (or equivalent) is called with role = #admin, it writes the profile to the stable store under the exact caller principal that will be passed to all subsequent mutation calls. Ensure there is no race condition, key mismatch, or silent overwrite that causes the stored role to differ from what was submitted.",
+      "reqIds": [
+        "REQ-27"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-27",
+      "summary": "Provide real/persistent admin account credentials or setup instructions so the user can use a genuine admin account rather than test/placeholder details",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-28",
+      "summary": "In the Motoko backend, implement a bootstrapAdmin function (or equivalent initialisation mechanism) that allows the first authenticated caller to claim the admin role permanently, storing their principal in the stable profiles store with role = #admin. This ensures the admin account is a real, persistent account tied to the user's actual Internet Identity principal — not a placeholder or test account. The function should only work once (or only if no admin profile yet exists) to prevent takeover.",
+      "reqIds": [
+        "REQ-31"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-29",
+      "summary": "Add role-selection landing pages: when a visitor clicks a portal category (Admin, Staff, Student, Parent), route them to a dedicated login page for that role so that after Internet Identity login they are automatically registered/recognised under the selected role without needing to manually choose their role post-login",
+      "reqIds": [],
       "status": "pending"
     }
   ],

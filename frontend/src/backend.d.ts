@@ -141,6 +141,7 @@ export interface backendInterface {
     applyForHostel(roomType: string, session: string): Promise<bigint>;
     assignAccessRole(user: Principal, role: UserRole__1): Promise<void>;
     assignCallerUserRole(user: Principal, role: UserRole__1): Promise<void>;
+    bootstrapAdmin(name: string, idNumber: string, email: string): Promise<void>;
     checkAdmissionStatus(jambNumber: string): Promise<AdmissionStatus | null>;
     checkAdmissionStatusByName(name: string): Promise<AdmissionStatus | null>;
     checkUnpaidFees(): Promise<Array<FeeType>>;

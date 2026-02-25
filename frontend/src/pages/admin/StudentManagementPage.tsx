@@ -1,86 +1,63 @@
 import React, { useState } from 'react';
-import { useGetAllStudents, useAddStudent, isAuthorizationError, ADMIN_AUTH_ERROR_MSG, extractErrorMessage } from '../../hooks/useQueries';
+import { toast } from 'sonner';
+import { useActor } from '../../hooks/useActor';
+import { useGetAllStudents, useAddStudentProfile, extractErrorMessage } from '../../hooks/useQueries';
+import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '../../components/ui/table';
-import { Alert, AlertDescription, AlertTitle } from '../../components/ui/alert';
-import { toast } from 'sonner';
-import { Users, PlusCircle, Loader2, Search, AlertCircle } from 'lucide-react';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/table';
+import { Loader2, PlusCircle, Users } from 'lucide-react';
+import RoleGuard from '../../components/auth/RoleGuard';
+import { UserRole } from '../../backend';
 
-export default function StudentManagementPage() {
+function StudentManagementContent() {
+  const { actor, isFetching: actorFetching } = useActor();
   const { data: students = [], isLoading } = useGetAllStudents();
-  const addStudent = useAddStudent();
+  const addStudentProfile = useAddStudentProfile();
 
   const [name, setName] = useState('');
   const [idNumber, setIdNumber] = useState('');
   const [email, setEmail] = useState('');
-  const [search, setSearch] = useState('');
-  const [authError, setAuthError] = useState<string | null>(null);
 
-  const filtered = students.filter(
-    (s) =>
-      s.name.toLowerCase().includes(search.toLowerCase()) ||
-      s.idNumber.toLowerCase().includes(search.toLowerCase()) ||
-      s.email.toLowerCase().includes(search.toLowerCase())
-  );
+  const isActorReady = !!actor && !actorFetching;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setAuthError(null);
-
-    if (!name.trim() || !idNumber.trim() || !email.trim()) {
-      toast.error('Please fill in all fields');
+    if (!isActorReady) {
+      toast.error('Please wait — connecting to the server...');
       return;
     }
-
+    if (!name || !idNumber || !email) {
+      toast.error('Please fill in all fields.');
+      return;
+    }
     try {
-      await addStudent.mutateAsync({
-        name: name.trim(),
-        idNumber: idNumber.trim(),
-        email: email.trim(),
-      });
+      await addStudentProfile.mutateAsync({ name, idNumber, email });
       toast.success('Student registered successfully!');
       setName('');
       setIdNumber('');
       setEmail('');
-    } catch (error: unknown) {
-      const msg = extractErrorMessage(error);
-      if (isAuthorizationError(error)) {
-        setAuthError(ADMIN_AUTH_ERROR_MSG);
-        toast.error(ADMIN_AUTH_ERROR_MSG);
-      } else {
-        toast.error(`Failed to register student: ${msg}`);
-      }
+    } catch (err) {
+      toast.error(extractErrorMessage(err));
     }
   };
 
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center gap-3">
-        <Users className="h-7 w-7 text-primary" />
-        <h1 className="text-2xl font-bold">Student Management</h1>
+        <Users className="h-8 w-8 text-primary" />
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Student Management</h1>
+          <p className="text-muted-foreground">Register and manage student profiles</p>
+        </div>
       </div>
 
-      {authError && (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Authorization Error</AlertTitle>
-          <AlertDescription>
-            {authError}
-            <button className="ml-2 underline font-medium" onClick={() => setAuthError(null)}>
-              Dismiss
-            </button>
-          </AlertDescription>
-        </Alert>
+      {!isActorReady && (
+        <div className="flex items-center gap-2 p-3 bg-muted rounded-lg text-muted-foreground text-sm">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          <span>Connecting to server — please wait before submitting...</span>
+        </div>
       )}
 
       <Card>
@@ -91,45 +68,57 @@ export default function StudentManagementPage() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="space-y-1.5">
+          <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
               <Label htmlFor="studentName">Full Name</Label>
               <Input
                 id="studentName"
-                placeholder="e.g. Amaka Okonkwo"
                 value={name}
-                onChange={(e) => { setName(e.target.value); setAuthError(null); }}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="e.g. John Doe"
+                disabled={addStudentProfile.isPending}
               />
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="studentId">Matriculation Number</Label>
+            <div className="space-y-2">
+              <Label htmlFor="studentId">Student ID / Matric Number</Label>
               <Input
                 id="studentId"
-                placeholder="e.g. MAT/2024/001"
                 value={idNumber}
-                onChange={(e) => { setIdNumber(e.target.value); setAuthError(null); }}
+                onChange={(e) => setIdNumber(e.target.value)}
+                placeholder="e.g. CSC/2024/001"
+                disabled={addStudentProfile.isPending}
               />
             </div>
-            <div className="space-y-1.5">
+            <div className="space-y-2 md:col-span-2">
               <Label htmlFor="studentEmail">Email Address</Label>
               <Input
                 id="studentEmail"
                 type="email"
-                placeholder="e.g. amaka@university.edu.ng"
                 value={email}
-                onChange={(e) => { setEmail(e.target.value); setAuthError(null); }}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="e.g. john.doe@university.edu"
+                disabled={addStudentProfile.isPending}
               />
             </div>
-            <div className="md:col-span-3">
-              <Button type="submit" disabled={addStudent.isPending} className="w-full md:w-auto">
-                {addStudent.isPending ? (
+            <div className="md:col-span-2">
+              <Button
+                type="submit"
+                disabled={!isActorReady || addStudentProfile.isPending}
+                className="w-full md:w-auto"
+              >
+                {addStudentProfile.isPending ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
                     Registering...
+                  </>
+                ) : !isActorReady ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    Connecting...
                   </>
                 ) : (
                   <>
-                    <PlusCircle className="mr-2 h-4 w-4" />
+                    <PlusCircle className="h-4 w-4 mr-2" />
                     Register Student
                   </>
                 )}
@@ -141,40 +130,29 @@ export default function StudentManagementPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Registered Students</CardTitle>
+          <CardTitle>All Students ({students.length})</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search by name, ID, or email..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-9"
-            />
-          </div>
+        <CardContent>
           {isLoading ? (
             <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              <Loader2 className="h-6 w-6 animate-spin text-primary" />
             </div>
-          ) : filtered.length === 0 ? (
-            <p className="text-center text-muted-foreground py-8">
-              {search ? 'No students match your search.' : 'No students registered yet.'}
-            </p>
+          ) : students.length === 0 ? (
+            <p className="text-center text-muted-foreground py-8">No students registered yet.</p>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Name</TableHead>
-                  <TableHead>Matric Number</TableHead>
+                  <TableHead>ID / Matric Number</TableHead>
                   <TableHead>Email</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtered.map((student) => (
-                  <TableRow key={student.idNumber}>
+                {students.map((student, idx) => (
+                  <TableRow key={idx}>
                     <TableCell className="font-medium">{student.name}</TableCell>
-                    <TableCell className="font-mono text-sm">{student.idNumber}</TableCell>
+                    <TableCell className="font-mono">{student.idNumber}</TableCell>
                     <TableCell>{student.email}</TableCell>
                   </TableRow>
                 ))}
@@ -184,5 +162,13 @@ export default function StudentManagementPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function StudentManagementPage() {
+  return (
+    <RoleGuard requiredRole={UserRole.admin}>
+      <StudentManagementContent />
+    </RoleGuard>
   );
 }

@@ -1,22 +1,18 @@
 import React, { useState } from 'react';
-import { useGetFeeTypes, useAddFeeType, isAuthorizationError, ADMIN_AUTH_ERROR_MSG, extractErrorMessage } from '../../hooks/useQueries';
+import { toast } from 'sonner';
+import { useActor } from '../../hooks/useActor';
+import { useGetFeeTypes, useAddFeeType, extractErrorMessage } from '../../hooks/useQueries';
+import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '../../components/ui/table';
-import { toast } from 'sonner';
-import { PlusCircle, DollarSign, Loader2, AlertCircle } from 'lucide-react';
-import { Alert, AlertDescription, AlertTitle } from '../../components/ui/alert';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/table';
+import { Loader2, PlusCircle, DollarSign } from 'lucide-react';
+import RoleGuard from '../../components/auth/RoleGuard';
+import { UserRole } from '../../backend';
 
-export default function FeeManagementPage() {
+function FeeManagementContent() {
+  const { actor, isFetching: actorFetching } = useActor();
   const { data: feeTypes = [], isLoading } = useGetFeeTypes();
   const addFeeType = useAddFeeType();
 
@@ -24,70 +20,58 @@ export default function FeeManagementPage() {
   const [amount, setAmount] = useState('');
   const [programme, setProgramme] = useState('');
   const [session, setSession] = useState('');
-  const [authError, setAuthError] = useState<string | null>(null);
 
-  const formatNaira = (amount: bigint) =>
-    new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN' }).format(Number(amount));
+  const isActorReady = !!actor && !actorFetching;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setAuthError(null);
-
-    if (!name.trim() || !amount || !programme.trim() || !session.trim()) {
-      toast.error('Please fill in all fields');
+    if (!isActorReady) {
+      toast.error('Please wait — connecting to the server...');
       return;
     }
-
-    const amountNum = parseFloat(amount);
-    if (isNaN(amountNum) || amountNum <= 0) {
-      toast.error('Please enter a valid amount');
+    if (!name || !amount || !programme || !session) {
+      toast.error('Please fill in all fields.');
       return;
     }
-
     try {
       await addFeeType.mutateAsync({
-        name: name.trim(),
-        amount: BigInt(Math.round(amountNum * 100)),
-        programme: programme.trim(),
-        session: session.trim(),
+        name,
+        amount: BigInt(Math.round(parseFloat(amount) * 100)),
+        programme,
+        session,
       });
       toast.success('Fee type added successfully!');
       setName('');
       setAmount('');
       setProgramme('');
       setSession('');
-    } catch (error: unknown) {
-      const msg = extractErrorMessage(error);
-      if (isAuthorizationError(error)) {
-        setAuthError(ADMIN_AUTH_ERROR_MSG);
-        toast.error(ADMIN_AUTH_ERROR_MSG);
-      } else {
-        toast.error(`Failed to add fee type: ${msg}`);
-      }
+    } catch (err) {
+      toast.error(extractErrorMessage(err));
     }
+  };
+
+  const formatAmount = (amount: bigint) => {
+    return new Intl.NumberFormat('en-NG', {
+      style: 'currency',
+      currency: 'NGN',
+    }).format(Number(amount) / 100);
   };
 
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center gap-3">
-        <DollarSign className="h-7 w-7 text-primary" />
-        <h1 className="text-2xl font-bold">Fee Management</h1>
+        <DollarSign className="h-8 w-8 text-primary" />
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Fee Management</h1>
+          <p className="text-muted-foreground">Add and manage fee types for all programmes</p>
+        </div>
       </div>
 
-      {authError && (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Authorization Error</AlertTitle>
-          <AlertDescription>
-            {authError}
-            <button
-              className="ml-2 underline font-medium"
-              onClick={() => setAuthError(null)}
-            >
-              Dismiss
-            </button>
-          </AlertDescription>
-        </Alert>
+      {!isActorReady && (
+        <div className="flex items-center gap-2 p-3 bg-muted rounded-lg text-muted-foreground text-sm">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          <span>Connecting to server — please wait before submitting...</span>
+        </div>
       )}
 
       <Card>
@@ -99,53 +83,66 @@ export default function FeeManagementPage() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-1.5">
+            <div className="space-y-2">
               <Label htmlFor="feeName">Fee Name</Label>
               <Input
                 id="feeName"
-                placeholder="e.g. Tuition Fee"
                 value={name}
-                onChange={(e) => { setName(e.target.value); setAuthError(null); }}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="e.g. Tuition Fee"
+                disabled={addFeeType.isPending}
               />
             </div>
-            <div className="space-y-1.5">
+            <div className="space-y-2">
               <Label htmlFor="feeAmount">Amount (₦)</Label>
               <Input
                 id="feeAmount"
                 type="number"
-                placeholder="e.g. 150000"
                 value={amount}
-                onChange={(e) => { setAmount(e.target.value); setAuthError(null); }}
+                onChange={(e) => setAmount(e.target.value)}
+                placeholder="e.g. 150000"
+                disabled={addFeeType.isPending}
               />
             </div>
-            <div className="space-y-1.5">
+            <div className="space-y-2">
               <Label htmlFor="feeProgramme">Programme</Label>
               <Input
                 id="feeProgramme"
-                placeholder="e.g. Computer Science"
                 value={programme}
-                onChange={(e) => { setProgramme(e.target.value); setAuthError(null); }}
+                onChange={(e) => setProgramme(e.target.value)}
+                placeholder="e.g. Computer Science"
+                disabled={addFeeType.isPending}
               />
             </div>
-            <div className="space-y-1.5">
+            <div className="space-y-2">
               <Label htmlFor="feeSession">Session</Label>
               <Input
                 id="feeSession"
-                placeholder="e.g. 2024/2025"
                 value={session}
-                onChange={(e) => { setSession(e.target.value); setAuthError(null); }}
+                onChange={(e) => setSession(e.target.value)}
+                placeholder="e.g. 2024/2025"
+                disabled={addFeeType.isPending}
               />
             </div>
             <div className="md:col-span-2">
-              <Button type="submit" disabled={addFeeType.isPending} className="w-full md:w-auto">
+              <Button
+                type="submit"
+                disabled={!isActorReady || addFeeType.isPending}
+                className="w-full md:w-auto"
+              >
                 {addFeeType.isPending ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Adding...
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    Adding Fee...
+                  </>
+                ) : !isActorReady ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    Connecting...
                   </>
                 ) : (
                   <>
-                    <PlusCircle className="mr-2 h-4 w-4" />
+                    <PlusCircle className="h-4 w-4 mr-2" />
                     Add Fee Type
                   </>
                 )}
@@ -157,34 +154,32 @@ export default function FeeManagementPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Fee Schedule</CardTitle>
+          <CardTitle>All Fee Types</CardTitle>
         </CardHeader>
         <CardContent>
           {isLoading ? (
             <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              <Loader2 className="h-6 w-6 animate-spin text-primary" />
             </div>
           ) : feeTypes.length === 0 ? (
-            <p className="text-center text-muted-foreground py-8">No fee types defined yet.</p>
+            <p className="text-center text-muted-foreground py-8">No fee types added yet.</p>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Fee Name</TableHead>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Amount</TableHead>
                   <TableHead>Programme</TableHead>
                   <TableHead>Session</TableHead>
-                  <TableHead className="text-right">Amount</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {feeTypes.map((fee) => (
-                  <TableRow key={String(fee.id)}>
+                  <TableRow key={fee.id.toString()}>
                     <TableCell className="font-medium">{fee.name}</TableCell>
+                    <TableCell>{formatAmount(fee.amount)}</TableCell>
                     <TableCell>{fee.programme}</TableCell>
                     <TableCell>{fee.session}</TableCell>
-                    <TableCell className="text-right font-mono">
-                      {formatNaira(fee.amount / 100n)}
-                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -193,5 +188,13 @@ export default function FeeManagementPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function FeeManagementPage() {
+  return (
+    <RoleGuard requiredRole={UserRole.admin}>
+      <FeeManagementContent />
+    </RoleGuard>
   );
 }

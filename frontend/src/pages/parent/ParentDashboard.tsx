@@ -21,19 +21,21 @@ import {
   GraduationCap,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import type { Result } from '../../backend';
 
 const sidebarLinks = [
   { label: 'Dashboard', href: '/parent', icon: LayoutDashboard },
 ] as const;
 
 const gradePoints: Record<string, number> = {
-  'A': 5, 'B': 4, 'C': 3, 'D': 2, 'E': 1, 'F': 0,
+  A: 5, B: 4, C: 3, D: 2, E: 1, F: 0,
 };
 
 export default function ParentDashboard() {
   const navigate = useNavigate();
   const [studentIdInput, setStudentIdInput] = useState('');
   const [linkedStudentId, setLinkedStudentId] = useState('');
+  const [studentResults, setStudentResults] = useState<Result[]>([]);
 
   const {
     data: userProfile,
@@ -43,7 +45,7 @@ export default function ParentDashboard() {
     refetch: refetchProfile,
   } = useGetCallerUserProfile();
 
-  const { data: studentResults = [] } = useGetResultsForStudent(linkedStudentId);
+  const getResultsForStudent = useGetResultsForStudent();
   const linkParent = useLinkParentToStudent();
 
   const handleLinkStudent = async () => {
@@ -51,6 +53,9 @@ export default function ParentDashboard() {
     try {
       await linkParent.mutateAsync(studentIdInput.trim());
       setLinkedStudentId(studentIdInput.trim());
+      // Fetch results for the newly linked student
+      const results = await getResultsForStudent.mutateAsync(studentIdInput.trim());
+      setStudentResults(results ?? []);
       toast.success('Student linked successfully');
     } catch (err) {
       toast.error('Failed to link student. Please check the student ID.');
@@ -58,14 +63,14 @@ export default function ParentDashboard() {
   };
 
   // Group results by semester
-  const resultsBySemester = studentResults.reduce<Record<string, typeof studentResults>>((acc, r) => {
+  const resultsBySemester = studentResults.reduce<Record<string, Result[]>>((acc, r) => {
     const key = r.semester;
     if (!acc[key]) acc[key] = [];
     acc[key].push(r);
     return acc;
   }, {});
 
-  const calculateGPA = (semResults: typeof studentResults) => {
+  const calculateGPA = (semResults: Result[]) => {
     if (semResults.length === 0) return '0.00';
     const total = semResults.reduce((sum, r) => sum + (gradePoints[r.grade] ?? 0), 0);
     return (total / semResults.length).toFixed(2);
@@ -195,45 +200,42 @@ export default function ParentDashboard() {
                 </CardContent>
               </Card>
             ) : (
-              Object.entries(resultsBySemester).map(([semester, semResults]) => {
-                const typedResults: typeof studentResults = semResults;
-                return (
-                  <Card key={semester}>
-                    <CardHeader className="pb-2">
-                      <div className="flex items-center justify-between">
-                        <CardTitle className="text-sm font-semibold">{semester}</CardTitle>
-                        <Badge variant="secondary">GPA: {calculateGPA(typedResults)}</Badge>
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-2">
-                        {typedResults.map((result, idx) => (
-                          <div
-                            key={idx}
-                            className="flex items-center justify-between py-1.5 border-b border-border last:border-0"
-                          >
-                            <div className="flex items-center gap-2">
-                              <FileText className="h-3.5 w-3.5 text-muted-foreground" />
-                              <span className="text-sm">Course #{String(result.courseId)}</span>
-                            </div>
-                            <div className="flex items-center gap-3">
-                              <span className="text-sm text-muted-foreground">
-                                Score: {String(result.score)}
-                              </span>
-                              <Badge
-                                variant={result.grade === 'F' ? 'destructive' : 'default'}
-                                className="w-8 justify-center"
-                              >
-                                {result.grade}
-                              </Badge>
-                            </div>
+              Object.entries(resultsBySemester).map(([semester, semResults]) => (
+                <Card key={semester}>
+                  <CardHeader className="pb-2">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-sm font-semibold">{semester}</CardTitle>
+                      <Badge variant="secondary">GPA: {calculateGPA(semResults)}</Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      {semResults.map((result, idx) => (
+                        <div
+                          key={idx}
+                          className="flex items-center justify-between py-1.5 border-b border-border last:border-0"
+                        >
+                          <div className="flex items-center gap-2">
+                            <FileText className="h-3.5 w-3.5 text-muted-foreground" />
+                            <span className="text-sm">Course #{String(result.courseId)}</span>
                           </div>
-                        ))}
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              })
+                          <div className="flex items-center gap-3">
+                            <span className="text-sm text-muted-foreground">
+                              Score: {String(result.score)}
+                            </span>
+                            <Badge
+                              variant={result.grade === 'F' ? 'destructive' : 'default'}
+                              className="w-8 justify-center"
+                            >
+                              {result.grade}
+                            </Badge>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
             )}
           </div>
         )}

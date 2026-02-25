@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link, useNavigate } from '@tanstack/react-router';
+import { useNavigate } from '@tanstack/react-router';
 import { CreditCard, CheckCircle, AlertCircle, Loader2, Receipt } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,10 +12,15 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { useGetFeeTypes, useGetPaymentHistory, useCheckUnpaidFees, useCreateCheckoutSession } from '../../hooks/useQueries';
+import {
+  useGetFeeTypes,
+  useGetPaymentHistory,
+  useCheckUnpaidFees,
+  useCreateCheckoutSession,
+} from '../../hooks/useQueries';
 import { formatNairaFromBackend } from '../../utils/currency';
 import { toast } from 'sonner';
-import type { FeeType, ShoppingItem } from '../../backend';
+import type { FeeType } from '../../backend';
 
 export default function FeeStatementPage() {
   const navigate = useNavigate();
@@ -33,14 +38,20 @@ export default function FeeStatementPage() {
 
   const handlePayNow = async (fee: FeeType) => {
     try {
-      const item: ShoppingItem = {
-        productName: fee.name,
-        currency: 'usd',
-        quantity: BigInt(1),
-        priceInCents: fee.amount * BigInt(100),
-        productDescription: `${fee.programme} - ${fee.session}`,
-      };
-      const session = await createCheckout.mutateAsync([item]);
+      const baseUrl = `${window.location.protocol}//${window.location.host}`;
+      const session = await createCheckout.mutateAsync({
+        items: [
+          {
+            productName: fee.name,
+            currency: 'usd',
+            quantity: BigInt(1),
+            priceInCents: fee.amount * BigInt(100),
+            productDescription: `${fee.programme} - ${fee.session}`,
+          },
+        ],
+        successUrl: `${baseUrl}/payment-success`,
+        cancelUrl: `${baseUrl}/payment-failure`,
+      });
       if (!session?.url) throw new Error('Stripe session missing url');
       window.location.href = session.url;
     } catch (err: unknown) {

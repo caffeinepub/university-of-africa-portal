@@ -224,6 +224,7 @@ export interface backendInterface {
     applyForHostel(roomType: string, session: string): Promise<bigint>;
     assignAccessRole(user: Principal, role: UserRole__1): Promise<void>;
     assignCallerUserRole(user: Principal, role: UserRole__1): Promise<void>;
+    bootstrapAdmin(name: string, idNumber: string, email: string): Promise<void>;
     checkAdmissionStatus(jambNumber: string): Promise<AdmissionStatus | null>;
     checkAdmissionStatusByName(name: string): Promise<AdmissionStatus | null>;
     checkUnpaidFees(): Promise<Array<FeeType>>;
@@ -377,6 +378,20 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.assignCallerUserRole(arg0, to_candid_UserRole__1_n1(this._uploadFile, this._downloadFile, arg1));
+            return result;
+        }
+    }
+    async bootstrapAdmin(arg0: string, arg1: string, arg2: string): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.bootstrapAdmin(arg0, arg1, arg2);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.bootstrapAdmin(arg0, arg1, arg2);
             return result;
         }
     }

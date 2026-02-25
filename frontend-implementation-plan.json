@@ -1,51 +1,89 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Fix 'Unauthorized — admin only' error for authenticated admin users",
+  "title": "Add role-based portal login landing pages for each access category",
   "requirements": [
     {
-      "id": "REQ-25",
-      "summary": "Surface clear, human-readable error messages in Admin Panel pages when backend mutations return authorization errors, so admins know immediately if they need to re-authenticate rather than seeing raw error strings.",
+      "id": "REQ-34",
+      "summary": "Create Portal Selection page at /portal with four distinct portal entry cards for Student, Staff, Admin, and Parent portals that navigate to role-specific login pages",
       "acceptanceCriteria": [
-        "When any admin mutation fails with an authorization-related error, a visible toast or error banner is shown with text like 'Action failed: you must be logged in as an Admin. Please re-authenticate and try again.'",
-        "The error state is cleared when the user retries or navigates away.",
-        "Successful mutations show a success confirmation as before."
+        "A Portal Selection page exists with four cards: Student Portal, Staff Portal, Admin Portal, and Parent Portal.",
+        "Each card has a descriptive label and an action button.",
+        "Clicking a card navigates to that role's dedicated login page (e.g., /login/student, /login/staff, /login/admin, /login/parent).",
+        "The portal selection page is accessible from the public navigation bar and the homepage portal links.",
+        "Unauthenticated visitors can access this page without logging in."
       ],
       "file_operations": [
         {
-          "path": "frontend/src/pages/admin/FeeManagementPage.tsx",
-          "operation": "modify",
-          "description": "Add error handling to the addFeeType mutation that detects authorization-related errors (e.g., error messages containing 'Unauthorized' or 'admin only') and displays a clear, human-readable toast notification prompting the admin to re-authenticate. Ensure successful fee creation still shows a success toast and the error state is cleared on retry or navigation."
+          "path": "frontend/src/pages/PortalSelectionPage.tsx",
+          "operation": "create",
+          "description": "Create a new public page component that displays four portal entry cards (Student, Staff, Admin, Parent). Each card includes a role title, brief description of the portal's purpose, and a button linking to the corresponding role-specific login page (/login/student, /login/staff, /login/admin, /login/parent). Use responsive grid layout with shadcn/ui Card components and maintain the existing navy-and-gold design system."
         },
         {
-          "path": "frontend/src/pages/admin/ProgrammeManagementPage.tsx",
+          "path": "frontend/src/App.tsx",
           "operation": "modify",
-          "description": "Add error handling to the addCourse mutation that detects authorization-related errors and displays a clear toast notification with text like 'Action failed: you must be logged in as an Admin. Please re-authenticate and try again.' Ensure successful course creation still shows a success toast and the error state is cleared appropriately."
+          "description": "Add a new public route for /portal that renders the PortalSelectionPage component. Place this route alongside other public routes (before the authenticated role-based routes)."
+        }
+      ]
+    },
+    {
+      "id": "REQ-35",
+      "summary": "Create four dedicated role-specific login pages with Internet Identity authentication that pre-select the corresponding role in ProfileSetupModal for new users",
+      "acceptanceCriteria": [
+        "Routes /login/student, /login/staff, /login/admin, and /login/parent each render a distinct role-branded login page.",
+        "Each login page displays the role name prominently and a brief portal description.",
+        "Clicking 'Login with Internet Identity' on any of these pages triggers the standard Internet Identity authentication flow.",
+        "After successful authentication, if a profile already exists with the correct role, the user is immediately redirected to their role's dashboard (/student, /staff, /admin, or /parent).",
+        "If no profile exists yet, the ProfileSetupModal opens with the role field pre-filled and locked to the role corresponding to the login page visited.",
+        "After profile setup is completed from a role-specific login page, the user is redirected to the correct role dashboard.",
+        "If an authenticated user with an existing mismatched role lands on a role-specific login page, show a message indicating they are already registered under a different role and provide a link to their actual dashboard."
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/pages/auth/RoleLoginPage.tsx",
+          "operation": "create",
+          "description": "Create a parameterized role-specific login page component that accepts a role prop (student, staff, admin, or parent). Display the role name and portal description prominently. Include a 'Login with Internet Identity' button that triggers the useInternetIdentity login flow. After successful authentication, check if the user has an existing profile using useGetCallerUserProfile. If a profile exists and matches the target role, redirect to the appropriate dashboard (/student, /staff, /admin, or /parent). If a profile exists but the role does not match, display a message with a link to their actual dashboard. If no profile exists, the Layout component will automatically open the ProfileSetupModal with the defaultRole prop set to the target role. Use the authorization component's authentication patterns and handle all login states (logging-in, authenticated, error)."
         },
         {
-          "path": "frontend/src/pages/admin/StudentManagementPage.tsx",
+          "path": "frontend/src/App.tsx",
           "operation": "modify",
-          "description": "Add error handling to the addStudentProfile mutation that detects authorization-related errors and displays a human-readable toast notification. Ensure the error is cleared when the user retries or navigates away, and successful student registration still shows a success confirmation."
+          "description": "Add four new public routes for /login/student, /login/staff, /login/admin, and /login/parent that each render the RoleLoginPage component with the corresponding role prop. Place these routes in the public section before the authenticated role-based routes."
         },
         {
-          "path": "frontend/src/pages/admin/ResultsManagementPage.tsx",
+          "path": "frontend/src/components/auth/ProfileSetupModal.tsx",
           "operation": "modify",
-          "description": "Add error handling to the addResult mutation that detects authorization-related errors and displays a clear toast notification prompting re-authentication. Ensure successful result posting still shows a success toast and the error state is cleared on retry or navigation."
+          "description": "Add an optional defaultRole prop of type UserRole to the ProfileSetupModal component. When defaultRole is provided, pre-select that role in the role dropdown and disable the role selection field (make it read-only or disabled) so the user cannot change it. Update the form initialization to use the defaultRole if present. Ensure the existing form validation and submission logic using saveCallerUserProfile mutation remains unchanged."
         },
         {
-          "path": "frontend/src/pages/admin/MessagingPage.tsx",
+          "path": "frontend/src/components/layout/Layout.tsx",
           "operation": "modify",
-          "description": "Add error handling to the sendAnnouncement mutation that detects authorization-related errors and displays a human-readable toast notification. Ensure successful announcements still show a success confirmation and the error state is cleared appropriately."
+          "description": "Update the Layout component to accept and pass through an optional defaultRole prop to the ProfileSetupModal. This allows parent components (like RoleLoginPage) to specify which role should be pre-selected when the modal opens for new users. The modal should only open when isAuthenticated is true, userProfile is null, and profile data has finished loading (isFetched is true), preventing modal flash on page load."
+        }
+      ]
+    },
+    {
+      "id": "REQ-36",
+      "summary": "Update homepage and Navigation component portal links to route unauthenticated visitors to role-specific login pages instead of directly to dashboards",
+      "acceptanceCriteria": [
+        "Homepage portal cards and navigation portal links route unauthenticated visitors to /login/{role} pages instead of directly to protected dashboard routes.",
+        "Authenticated users with a confirmed role clicking portal links are routed directly to their dashboards.",
+        "No broken links or 404 errors occur when navigating from portal entry points."
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/pages/HomePage.tsx",
+          "operation": "modify",
+          "description": "Update the portal cards section on the HomePage to link unauthenticated visitors to the new role-specific login pages (/login/student, /login/staff, /login/admin, /login/parent) instead of directly to dashboard routes. For authenticated users with an existing profile and matching role, keep the direct dashboard links. Use the isAuthenticated state from useInternetIdentity and the userProfile from useGetCallerUserProfile to determine the appropriate link destination for each portal card."
         },
         {
-          "path": "frontend/src/pages/admin/HostelManagementPage.tsx",
+          "path": "frontend/src/components/layout/Navigation.tsx",
           "operation": "modify",
-          "description": "Add error handling to the updateHostelApplicationStatus mutation that detects authorization-related errors and displays a clear toast notification with re-authentication guidance. Ensure successful hostel approvals/rejections still show success confirmations and the error state is cleared on retry or navigation."
+          "description": "Update the portal links in the Navigation component to route unauthenticated visitors to the role-specific login pages (/login/student, /login/staff, /login/admin, /login/parent) instead of directly to protected dashboard routes. For authenticated users with a confirmed role in their profile, maintain direct navigation to their role's dashboard. Add a new 'Portals' link in the public navigation that routes to /portal (the Portal Selection page). Use isAuthenticated and userProfile state to conditionally render the correct link destinations."
         },
         {
-          "path": "frontend/src/pages/admin/AdmissionsManagementPage.tsx",
+          "path": "frontend/src/components/layout/Footer.tsx",
           "operation": "modify",
-          "description": "Add error handling to the updateAdmissionStatus mutation that detects authorization-related errors and displays a human-readable toast notification. Ensure successful admission status updates still show success confirmations and the error state is cleared appropriately."
+          "description": "Update the portal quick links in the Footer component to route unauthenticated visitors to the role-specific login pages (/login/student, /login/staff, /login/admin, /login/parent). For authenticated users with a confirmed profile role, keep direct dashboard navigation. Use the isAuthenticated state and userProfile to determine link destinations, similar to the Navigation component."
         }
       ]
     }

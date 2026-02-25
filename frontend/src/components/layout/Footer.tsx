@@ -1,10 +1,30 @@
 import React from 'react';
-import { Link } from '@tanstack/react-router';
+import { useNavigate } from '@tanstack/react-router';
+import { useInternetIdentity } from '../../hooks/useInternetIdentity';
+import { useGetCallerUserProfile } from '../../hooks/useQueries';
+import { UserRole } from '../../backend';
 import { GraduationCap, MapPin, Phone, Mail, Heart } from 'lucide-react';
 
 export default function Footer() {
   const year = new Date().getFullYear();
   const appId = encodeURIComponent(window.location.hostname || 'university-of-africa-portal');
+  const navigate = useNavigate();
+  const { identity } = useInternetIdentity();
+  const { data: userProfile } = useGetCallerUserProfile();
+  const isAuthenticated = !!identity;
+
+  const getPortalPath = (role: 'student' | 'staff' | 'admin' | 'parent') => {
+    if (isAuthenticated && userProfile) {
+      const roleMap: Record<string, string> = {
+        student: '/student',
+        staff: '/staff',
+        admin: '/admin',
+        parent: '/parent',
+      };
+      return roleMap[role];
+    }
+    return `/login/${role}`;
+  };
 
   return (
     <footer className="bg-navy text-white/80 border-t border-gold/20">
@@ -34,10 +54,21 @@ export default function Footer() {
           <div>
             <h3 className="text-gold font-semibold text-sm uppercase tracking-wider mb-4">Quick Links</h3>
             <ul className="space-y-2 text-sm">
-              <li><Link to="/" className="hover:text-gold transition-colors">Home</Link></li>
-              <li><Link to="/admissions" className="hover:text-gold transition-colors">Admissions</Link></li>
-              <li><Link to="/admissions/apply" className="hover:text-gold transition-colors">Apply Now</Link></li>
-              <li><Link to="/admissions/check" className="hover:text-gold transition-colors">Check Admission</Link></li>
+              <li>
+                <button onClick={() => navigate({ to: '/' })} className="hover:text-gold transition-colors">Home</button>
+              </li>
+              <li>
+                <button onClick={() => navigate({ to: '/admissions' })} className="hover:text-gold transition-colors">Admissions</button>
+              </li>
+              <li>
+                <button onClick={() => navigate({ to: '/admissions/apply' })} className="hover:text-gold transition-colors">Apply Now</button>
+              </li>
+              <li>
+                <button onClick={() => navigate({ to: '/admissions/check' })} className="hover:text-gold transition-colors">Check Admission</button>
+              </li>
+              <li>
+                <button onClick={() => navigate({ to: '/portal' })} className="hover:text-gold transition-colors">All Portals</button>
+              </li>
             </ul>
           </div>
 
@@ -45,10 +76,26 @@ export default function Footer() {
           <div>
             <h3 className="text-gold font-semibold text-sm uppercase tracking-wider mb-4">Portals</h3>
             <ul className="space-y-2 text-sm">
-              <li><Link to="/student" className="hover:text-gold transition-colors">Student Portal</Link></li>
-              <li><Link to="/staff" className="hover:text-gold transition-colors">Staff Portal</Link></li>
-              <li><Link to="/parent" className="hover:text-gold transition-colors">Parent Portal</Link></li>
-              <li><Link to="/admin" className="hover:text-gold transition-colors">Admin Panel</Link></li>
+              <li>
+                <button onClick={() => navigate({ to: getPortalPath('student') })} className="hover:text-gold transition-colors">
+                  Student Portal
+                </button>
+              </li>
+              <li>
+                <button onClick={() => navigate({ to: getPortalPath('staff') })} className="hover:text-gold transition-colors">
+                  Staff Portal
+                </button>
+              </li>
+              <li>
+                <button onClick={() => navigate({ to: getPortalPath('parent') })} className="hover:text-gold transition-colors">
+                  Parent Portal
+                </button>
+              </li>
+              <li>
+                <button onClick={() => navigate({ to: getPortalPath('admin') })} className="hover:text-gold transition-colors">
+                  Admin Panel
+                </button>
+              </li>
             </ul>
           </div>
 
@@ -80,7 +127,7 @@ export default function Footer() {
               href={`https://caffeine.ai/?utm_source=Caffeine-footer&utm_medium=referral&utm_content=${appId}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-gold hover:underline"
+              className="text-gold hover:text-gold-light transition-colors"
             >
               caffeine.ai
             </a>

@@ -25,10 +25,10 @@ import {
   FileText,
   Home,
   Users,
-  Settings,
   Bell,
   ClipboardList,
   Building2,
+  Grid3X3,
 } from 'lucide-react';
 
 const studentLinks = [
@@ -151,6 +151,43 @@ export default function Navigation() {
           </nav>
         )}
 
+        {/* Public nav links for unauthenticated users */}
+        {!isAuthenticated && (
+          <nav className="hidden md:flex items-center gap-1">
+            <button
+              onClick={() => navigate({ to: '/' })}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                location.pathname === '/'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-accent'
+              }`}
+            >
+              Home
+            </button>
+            <button
+              onClick={() => navigate({ to: '/admissions' })}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                location.pathname.startsWith('/admissions')
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-accent'
+              }`}
+            >
+              Admissions
+            </button>
+            <button
+              onClick={() => navigate({ to: '/portal' })}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                location.pathname === '/portal' || location.pathname.startsWith('/login/')
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-accent'
+              }`}
+            >
+              <Grid3X3 className="h-3.5 w-3.5" />
+              Portals
+            </button>
+          </nav>
+        )}
+
         {/* Right side */}
         <div className="flex items-center gap-2">
           {isAuthenticated ? (
@@ -175,11 +212,9 @@ export default function Navigation() {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
                   <DropdownMenuLabel>
-                    <div className="flex flex-col gap-0.5">
+                    <div className="flex flex-col">
                       <span className="font-semibold">{userProfile.name}</span>
-                      <span className="text-xs text-muted-foreground capitalize font-normal">
-                        {userProfile.role} · {userProfile.idNumber}
-                      </span>
+                      <span className="text-xs text-muted-foreground capitalize">{userProfile.role}</span>
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
@@ -187,23 +222,15 @@ export default function Navigation() {
                     <LayoutDashboard className="h-4 w-4 mr-2" />
                     Dashboard
                   </DropdownMenuItem>
-                  {roleLinks.length > 5 && (
-                    <>
-                      <DropdownMenuSeparator />
-                      {roleLinks.slice(5).map((link) => {
-                        const Icon = link.icon;
-                        return (
-                          <DropdownMenuItem
-                            key={link.href}
-                            onClick={() => navigate({ to: link.href })}
-                          >
-                            <Icon className="h-4 w-4 mr-2" />
-                            {link.label}
-                          </DropdownMenuItem>
-                        );
-                      })}
-                    </>
-                  )}
+                  {roleLinks.slice(1).map((link) => {
+                    const Icon = link.icon;
+                    return (
+                      <DropdownMenuItem key={link.href} onClick={() => navigate({ to: link.href })}>
+                        <Icon className="h-4 w-4 mr-2" />
+                        {link.label}
+                      </DropdownMenuItem>
+                    );
+                  })}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive">
                     <LogOut className="h-4 w-4 mr-2" />
@@ -212,31 +239,37 @@ export default function Navigation() {
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
-              // Profile failed to load — show logout option
-              <Button variant="ghost" size="sm" onClick={handleLogout}>
-                <LogOut className="h-4 w-4 mr-1" />
+              // Authenticated but no profile — show logout button
+              <Button variant="outline" size="sm" onClick={handleLogout}>
+                <LogOut className="h-4 w-4 mr-2" />
                 Logout
               </Button>
             )
           ) : (
-            <Button
-              onClick={handleLogin}
-              disabled={isLoggingIn}
-              size="sm"
-              className="font-medium"
-            >
-              {isLoggingIn ? (
-                <>
-                  <span className="animate-spin mr-1.5">⏳</span>
-                  Logging in…
-                </>
-              ) : (
-                <>
-                  <User className="h-4 w-4 mr-1.5" />
-                  Login
-                </>
-              )}
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate({ to: '/portal' })}
+                className="hidden sm:flex border-navy text-navy hover:bg-navy/5"
+              >
+                <Grid3X3 className="h-4 w-4 mr-1.5" />
+                Portals
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleLogin}
+                disabled={isLoggingIn}
+                className="bg-navy text-white hover:bg-navy/90"
+              >
+                {isLoggingIn ? 'Logging in...' : (
+                  <>
+                    <User className="h-4 w-4 mr-1.5" />
+                    Login
+                  </>
+                )}
+              </Button>
+            </div>
           )}
         </div>
       </div>

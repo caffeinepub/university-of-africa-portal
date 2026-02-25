@@ -1,77 +1,81 @@
 {
   "kind": "build_request",
-  "title": "Fix 'Unauthorized — admin only' error for authenticated admin users",
-  "projectName": "UniPortal ICP",
-  "priority": "high",
+  "title": "Add role-based portal login landing pages for each access category",
+  "projectName": "University of Africa Portal",
+  "priority": "normal",
   "requirements": [
     {
-      "id": "REQ-23",
-      "text": "Fix the backend admin role check so that when a user registered with the 'admin' role calls privileged functions (such as addFeeItem, addCourse, registerStudent, updateAdmissionStatus, postResult, sendAnnouncement, approveHostelApplication, etc.), the caller's principal is correctly matched against the stored admin profile. The role check must read from the same stable profiles store used during registration and must not return #err(\"Unauthorized — admin only\") for a principal that has a stored profile with role = #admin.",
-      "target": "backend",
-      "source": {
-        "messageIds": [
-          "msg-4"
-        ],
-        "quotes": [
-          "Each time I try to add fee or any other thing they usually says unauthorized only admin allowed but I registered as an admin"
-        ]
-      },
-      "acceptanceCriteria": [
-        "An authenticated user whose stored profile has role = #admin can call addFeeItem without receiving an 'Unauthorized' error.",
-        "An authenticated user whose stored profile has role = #admin can call addCourse without receiving an 'Unauthorized' error.",
-        "An authenticated user whose stored profile has role = #admin can call updateAdmissionStatus, postResult, sendAnnouncement, and approveHostelApplication without receiving an 'Unauthorized' error.",
-        "The backend helper function that checks for admin role uses the same stable HashMap/Trie/variable that profiles are written to during registration — not a separate or uninitialized store.",
-        "A user with a non-admin role (student, staff, parent) still receives the 'Unauthorized' error when attempting admin-only functions.",
-        "After the fix, the Admin Panel FeeManagementPage, ProgrammeManagementPage, StudentManagementPage, ResultsManagementPage, MessagingPage, and HostelManagementPage all complete their operations successfully without surfacing an authorization error."
-      ]
-    },
-    {
-      "id": "REQ-24",
-      "text": "Audit all admin-gated backend functions in main.mo and consolidate the admin authorization check into a single shared helper (e.g., isAdmin(caller: Principal): Bool) that reads from the stable profiles store. Replace any ad-hoc or duplicated role checks throughout the file with calls to this helper to ensure consistency.",
-      "target": "backend",
-      "source": {
-        "messageIds": [
-          "msg-4"
-        ],
-        "quotes": [
-          "Each time I try to add fee or any other thing they usually says unauthorized only admin allowed but I registered as an admin"
-        ]
-      },
-      "acceptanceCriteria": [
-        "A single isAdmin (or equivalent) private helper function exists in main.mo and is used by every admin-gated function.",
-        "The helper correctly looks up the caller's principal in the stable profiles store and returns true only if the stored role is #admin.",
-        "No admin-gated function contains its own inline role-check logic that could diverge from the central helper.",
-        "All previously broken admin operations (fee creation, course creation, student registration, result posting, messaging, hostel approvals) succeed after this consolidation."
-      ]
-    },
-    {
-      "id": "REQ-25",
-      "text": "In the frontend Admin Panel pages (FeeManagementPage, ProgrammeManagementPage, StudentManagementPage, ResultsManagementPage, MessagingPage, HostelManagementPage), surface a clear, human-readable error toast or inline message when a backend mutation returns an authorization error, so admins know immediately if the session/actor has expired and they need to re-authenticate, rather than silently failing or showing a raw error string.",
+      "id": "REQ-34",
+      "text": "Create a Portal Selection page at /portal (or as a prominent section on the homepage) that displays four distinct portal entry cards: Student Portal, Staff Portal, Admin Portal, and Parent Portal. Each card must have a clear label, a brief description of the portal, and a 'Login' or 'Access Portal' button. Clicking a card navigates the visitor to that role's dedicated login page.",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-4"
+          "msg-1"
         ],
         "quotes": [
-          "Each time I try to add fee or any other thing they usually says unauthorized only admin allowed but I registered as an admin"
+          "once a visitor clicks on their category either as a staff student admin or alsoever if you take them to a page where they would login as that portal access category"
         ]
       },
       "acceptanceCriteria": [
-        "When any admin mutation fails with an authorization-related error, a visible toast or error banner is shown with text like 'Action failed: you must be logged in as an Admin. Please re-authenticate and try again.'",
-        "The error state is cleared when the user retries or navigates away.",
-        "Successful mutations show a success confirmation as before."
+        "A Portal Selection page exists with four cards: Student Portal, Staff Portal, Admin Portal, and Parent Portal.",
+        "Each card has a descriptive label and an action button.",
+        "Clicking a card navigates to that role's dedicated login page (e.g., /login/student, /login/staff, /login/admin, /login/parent).",
+        "The portal selection page is accessible from the public navigation bar and the homepage portal links.",
+        "Unauthenticated visitors can access this page without logging in."
+      ]
+    },
+    {
+      "id": "REQ-35",
+      "text": "Create four dedicated role-specific login pages — /login/student, /login/staff, /login/admin, and /login/parent — each branded with the role name and a short description (e.g., 'Student Portal — Access your courses, results, and fee statements'). Each page must show an 'Login with Internet Identity' button that triggers the Internet Identity login flow. After successful login, if the user already has a profile with the matching role, redirect them directly to their role dashboard. If the user has no profile yet, pre-select the matching role in the ProfileSetupModal (so the role dropdown defaults to the role corresponding to the login page they used) before prompting them to complete profile setup. This eliminates the need for the user to manually choose their role after logging in via a role-specific portal page.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-1"
+        ],
+        "quotes": [
+          "admin will login as admin staff will login as staff student we login and student just as follows"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Routes /login/student, /login/staff, /login/admin, and /login/parent each render a distinct role-branded login page.",
+        "Each login page displays the role name prominently and a brief portal description.",
+        "Clicking 'Login with Internet Identity' on any of these pages triggers the standard Internet Identity authentication flow.",
+        "After successful authentication, if a profile already exists with the correct role, the user is immediately redirected to their role's dashboard (/student, /staff, /admin, or /parent).",
+        "If no profile exists yet, the ProfileSetupModal opens with the role field pre-filled and locked to the role corresponding to the login page visited.",
+        "After profile setup is completed from a role-specific login page, the user is redirected to the correct role dashboard.",
+        "If an authenticated user with an existing mismatched role lands on a role-specific login page, show a message indicating they are already registered under a different role and provide a link to their actual dashboard."
+      ]
+    },
+    {
+      "id": "REQ-36",
+      "text": "Update the public homepage and the Navigation component so that the portal links (Student Portal, Staff Portal, Admin Portal, Parent Portal) that were previously pointing directly to dashboard routes now point to the corresponding role-specific login pages (/login/student, /login/staff, /login/admin, /login/parent) for unauthenticated visitors. For already-authenticated users with a confirmed role, these links should still navigate directly to their respective dashboards.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-1"
+        ],
+        "quotes": [
+          "once a visitor clicks on their category either as a staff student admin or alsoever if you take them to a page where they would login as that portal access category"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Homepage portal cards and navigation portal links route unauthenticated visitors to /login/{role} pages instead of directly to protected dashboard routes.",
+        "Authenticated users with a confirmed role clicking portal links are routed directly to their dashboards.",
+        "No broken links or 404 errors occur when navigating from portal entry points."
       ]
     }
   ],
   "constraints": [
-    "Do not change the stable data schema for user profiles — only fix the role-check logic that reads from it.",
-    "Do not modify files listed under frontend.immutablePaths.",
-    "All Motoko logic must remain in the single main actor in backend/main.mo."
+    "Do not modify files under frontend/src/hooks/useInternetIdentity.ts, frontend/src/hooks/useActor.ts, frontend/src/main.tsx, or frontend/src/components/ui.",
+    "The Internet Identity login flow must use the existing useInternetIdentity hook — do not replace or duplicate it.",
+    "Role-specific login pages must reuse the existing ProfileSetupModal component for new user onboarding; do not create a parallel profile setup flow.",
+    "All protected dashboard routes must remain guarded by the existing RoleGuard component."
   ],
   "nonGoals": [
-    "Redesigning the profile registration flow or the ProfileSetupModal UI.",
-    "Adding new admin features beyond fixing the authorization bug.",
-    "Changing how Internet Identity authentication itself works."
+    "Creating separate backend functions or authentication mechanisms per role — all authentication continues through the single Internet Identity provider.",
+    "Changing the existing ProfileSetupModal component internals beyond accepting a defaultRole prop.",
+    "Adding any new backend Motoko logic for this feature — all changes are frontend-only.",
+    "Redesigning the existing dashboard pages or sidebar navigation."
   ],
   "imageRequirements": {
     "required": [],

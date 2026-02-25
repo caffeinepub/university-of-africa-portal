@@ -1,70 +1,77 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-02-25T20:38:12.036Z",
+  "generatedAt": "2026-02-25T21:35:15.240Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
   },
   "requirements": {
     "total": 3,
-    "implemented": 1,
+    "implemented": 3,
     "items": [
       {
-        "id": "REQ-23",
-        "summary": "Fix the backend admin role check so that when a user registered with the 'admin' role calls privileged functions (such as addFeeItem, addCourse, registerStudent, updateAdmissionStatus, postResult, sendAnnouncement, approveHostelApplication, etc.), the caller's principal is correctly matched against the stored admin profile. The role check must read from the same stable profiles store used during registration and must not return #err(\"Unauthorized — admin only\") for a principal that has a stored profile with role = #admin.",
-        "status": "unknown",
-        "plannedFiles": [],
-        "matchedFiles": []
-      },
-      {
-        "id": "REQ-24",
-        "summary": "Audit all admin-gated backend functions in main.mo and consolidate the admin authorization check into a single shared helper (e.g., isAdmin(caller: Principal): Bool) that reads from the stable profiles store. Replace any ad-hoc or duplicated role checks throughout the file with calls to this helper to ensure consistency.",
-        "status": "unknown",
-        "plannedFiles": [],
-        "matchedFiles": []
-      },
-      {
-        "id": "REQ-25",
-        "summary": "In the frontend Admin Panel pages (FeeManagementPage, ProgrammeManagementPage, StudentManagementPage, ResultsManagementPage, MessagingPage, HostelManagementPage), surface a clear, human-readable error toast or inline message when a backend mutation returns an authorization error, so admins know immediately if the session/actor has expired and they need to re-authenticate, rather than silently failing or showing a raw error string.",
+        "id": "REQ-34",
+        "summary": "Create a Portal Selection page at /portal (or as a prominent section on the homepage) that displays four distinct portal entry cards: Student Portal, Staff Portal, Admin Portal, and Parent Portal. Each card must have a clear label, a brief description of the portal, and a 'Login' or 'Access Portal' button. Clicking a card navigates the visitor to that role's dedicated login page.",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/pages/admin/FeeManagementPage.tsx",
-          "frontend/src/pages/admin/ProgrammeManagementPage.tsx",
-          "frontend/src/pages/admin/StudentManagementPage.tsx",
-          "frontend/src/pages/admin/ResultsManagementPage.tsx",
-          "frontend/src/pages/admin/MessagingPage.tsx",
-          "frontend/src/pages/admin/HostelManagementPage.tsx",
-          "frontend/src/pages/admin/AdmissionsManagementPage.tsx"
+          "frontend/src/pages/PortalSelectionPage.tsx",
+          "frontend/src/App.tsx"
         ],
         "matchedFiles": [
-          "frontend/src/pages/admin/FeeManagementPage.tsx",
-          "frontend/src/pages/admin/ProgrammeManagementPage.tsx",
-          "frontend/src/pages/admin/StudentManagementPage.tsx",
-          "frontend/src/pages/admin/ResultsManagementPage.tsx",
-          "frontend/src/pages/admin/MessagingPage.tsx",
-          "frontend/src/pages/admin/HostelManagementPage.tsx",
-          "frontend/src/pages/admin/AdmissionsManagementPage.tsx"
+          "frontend/src/pages/PortalSelectionPage.tsx",
+          "frontend/src/App.tsx"
+        ]
+      },
+      {
+        "id": "REQ-35",
+        "summary": "Create four dedicated role-specific login pages — /login/student, /login/staff, /login/admin, and /login/parent — each branded with the role name and a short description (e.g., 'Student Portal — Access your courses, results, and fee statements'). Each page must show an 'Login with Internet Identity' button that triggers the Internet Identity login flow. After successful login, if the user already has a profile with the matching role, redirect them directly to their role dashboard. If the user has no profile yet, pre-select the matching role in the ProfileSetupModal (so the role dropdown defaults to the role corresponding to the login page they used) before prompting them to complete profile setup. This eliminates the need for the user to manually choose their role after logging in via a role-specific portal page.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/pages/auth/RoleLoginPage.tsx",
+          "frontend/src/App.tsx",
+          "frontend/src/components/auth/ProfileSetupModal.tsx",
+          "frontend/src/components/layout/Layout.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/pages/auth/RoleLoginPage.tsx",
+          "frontend/src/App.tsx",
+          "frontend/src/components/auth/ProfileSetupModal.tsx",
+          "frontend/src/components/layout/Layout.tsx"
+        ]
+      },
+      {
+        "id": "REQ-36",
+        "summary": "Update the public homepage and the Navigation component so that the portal links (Student Portal, Staff Portal, Admin Portal, Parent Portal) that were previously pointing directly to dashboard routes now point to the corresponding role-specific login pages (/login/student, /login/staff, /login/admin, /login/parent) for unauthenticated visitors. For already-authenticated users with a confirmed role, these links should still navigate directly to their respective dashboards.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/pages/HomePage.tsx",
+          "frontend/src/components/layout/Navigation.tsx",
+          "frontend/src/components/layout/Footer.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/pages/HomePage.tsx",
+          "frontend/src/components/layout/Navigation.tsx",
+          "frontend/src/components/layout/Footer.tsx"
         ]
       }
     ]
   },
   "changedFiles": [
-    "backend/main.mo",
     "build-request.json",
+    "build-template/README.md",
+    "caffeine.lock.json",
     "feature_evidence.json",
     "frontend-file-summaries.txt",
     "frontend-implementation-plan.json",
+    "frontend/src/App.tsx",
     "frontend/src/components/auth/ProfileSetupModal.tsx",
+    "frontend/src/components/layout/Footer.tsx",
     "frontend/src/components/layout/Layout.tsx",
-    "frontend/src/hooks/useQueries.ts",
-    "frontend/src/pages/admin/AdmissionsManagementPage.tsx",
-    "frontend/src/pages/admin/FeeManagementPage.tsx",
-    "frontend/src/pages/admin/HostelManagementPage.tsx",
-    "frontend/src/pages/admin/MessagingPage.tsx",
-    "frontend/src/pages/admin/ProgrammeManagementPage.tsx",
-    "frontend/src/pages/admin/ResultsManagementPage.tsx",
-    "frontend/src/pages/admin/StudentManagementPage.tsx",
+    "frontend/src/components/layout/Navigation.tsx",
+    "frontend/src/pages/HomePage.tsx",
+    "frontend/src/pages/PortalSelectionPage.tsx",
+    "frontend/src/pages/auth/RoleLoginPage.tsx",
     "project_state.json",
     "scratch/component-selection.json",
     "spec.md",

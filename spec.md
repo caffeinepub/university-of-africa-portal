@@ -1,11 +1,13 @@
 # Specification
 
 ## Summary
-**Goal:** Fix the "Unauthorized — admin only" error that occurs when authenticated admin users attempt to call privileged backend functions, and improve error messaging on the frontend.
+**Goal:** Add a portal selection page and four role-specific login pages so that visitors are routed through a branded login experience before accessing any dashboard.
 
 **Planned changes:**
-- Consolidate all admin role checks in `backend/main.mo` into a single `isAdmin(caller: Principal): Bool` helper function that reads from the stable profiles store used during registration.
-- Replace all ad-hoc or duplicated inline role-check logic across admin-gated functions (addFeeItem, addCourse, registerStudent, updateAdmissionStatus, postResult, sendAnnouncement, approveHostelApplication, etc.) with calls to the shared helper.
-- On the frontend, add a clear error toast or inline banner to FeeManagementPage, ProgrammeManagementPage, StudentManagementPage, ResultsManagementPage, MessagingPage, and HostelManagementPage when a backend mutation returns an authorization error, prompting the user to re-authenticate.
+- Add a `/portal` Portal Selection page displaying four cards (Student Portal, Staff Portal, Admin Portal, Parent Portal), each with a label, brief description, and an "Access Portal" button that navigates to the corresponding role login page.
+- Add four dedicated role-branded login pages at `/login/student`, `/login/staff`, `/login/admin`, and `/login/parent`, each showing the role name, a short portal description, and a "Login with Internet Identity" button.
+- After successful login on a role-specific page, redirect users with a matching existing profile directly to their role dashboard; for new users, open the existing `ProfileSetupModal` with the role pre-filled and locked to the corresponding role.
+- If an authenticated user with a mismatched role lands on a role-specific login page, show a message and link to their actual dashboard.
+- Update homepage portal cards and navigation links so unauthenticated visitors are routed to `/login/{role}` pages instead of protected dashboard routes; authenticated users with a confirmed role continue to be routed directly to their dashboards.
 
-**User-visible outcome:** Admin users who have registered with the admin role can successfully perform all privileged actions (managing fees, courses, students, results, announcements, hostel applications) without receiving an unauthorized error. If an authorization failure does occur (e.g., expired session), a clear, human-readable message is displayed instead of a raw error string.
+**User-visible outcome:** Visitors who click a portal entry point are taken to a role-specific branded login page where they authenticate via Internet Identity and are then seamlessly directed to their correct dashboard or guided through profile setup with their role pre-selected.

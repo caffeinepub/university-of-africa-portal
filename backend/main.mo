@@ -153,6 +153,32 @@ actor {
 
   // 5. USER AUTHENTICATION & PROFILE MANAGEMENT
 
+  public shared ({ caller }) func bootstrapAdmin(name : Text, idNumber : Text, email : Text) : async () {
+    // Disallow anonymous/guest users
+    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
+      Runtime.trap("Unauthorized: Only authenticated users can perform this action");
+    };
+
+    // Only allow bootstrapping if no admin exists yet
+    let adminExists = userProfiles.values().any(
+      func(profile) { profile.role == #admin }
+    );
+    if (adminExists) {
+      Runtime.trap("Admin profile already exists. Cannot re-bootstrap admin.");
+    };
+
+    // Create and save admin profile
+    let adminProfile : UserProfile = {
+      principal = caller;
+      name;
+      role = #admin;
+      idNumber;
+      email;
+    };
+
+    userProfiles.add(caller, adminProfile);
+  };
+
   public query ({ caller }) func getCallerUserProfile() : async ?UserProfile {
     requireUser(caller);
     userProfiles.get(caller);

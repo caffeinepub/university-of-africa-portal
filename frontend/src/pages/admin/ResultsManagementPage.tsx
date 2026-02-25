@@ -1,40 +1,27 @@
 import React, { useState } from 'react';
+import { toast } from 'sonner';
+import { useActor } from '../../hooks/useActor';
 import {
   useGetAllResults,
+  useAddResult,
   useGetAllStudents,
   useGetCourses,
-  useAddResult,
-  isAuthorizationError,
-  ADMIN_AUTH_ERROR_MSG,
   extractErrorMessage,
 } from '../../hooks/useQueries';
+import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '../../components/ui/select';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '../../components/ui/table';
-import { Alert, AlertDescription, AlertTitle } from '../../components/ui/alert';
-import { Badge } from '../../components/ui/badge';
-import { toast } from 'sonner';
-import { ClipboardList, PlusCircle, Loader2, AlertCircle } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/table';
+import { Loader2, PlusCircle, ClipboardList } from 'lucide-react';
+import RoleGuard from '../../components/auth/RoleGuard';
+import { UserRole } from '../../backend';
 
 const GRADES = ['A', 'B', 'C', 'D', 'E', 'F'];
 
-export default function ResultsManagementPage() {
+function ResultsManagementContent() {
+  const { actor, isFetching: actorFetching } = useActor();
   const { data: results = [], isLoading: resultsLoading } = useGetAllResults();
   const { data: students = [] } = useGetAllStudents();
   const { data: courses = [] } = useGetCourses();
@@ -45,37 +32,26 @@ export default function ResultsManagementPage() {
   const [semester, setSemester] = useState('');
   const [grade, setGrade] = useState('');
   const [score, setScore] = useState('');
-  const [authError, setAuthError] = useState<string | null>(null);
 
-  const gradeColor = (g: string) => {
-    if (g === 'A') return 'default';
-    if (g === 'B') return 'secondary';
-    if (g === 'F') return 'destructive';
-    return 'outline';
-  };
+  const isActorReady = !!actor && !actorFetching;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setAuthError(null);
-
-    if (!studentId || !courseId || !semester.trim() || !grade || !score) {
-      toast.error('Please fill in all fields');
+    if (!isActorReady) {
+      toast.error('Please wait — connecting to the server...');
       return;
     }
-
-    const scoreNum = parseInt(score, 10);
-    if (isNaN(scoreNum) || scoreNum < 0 || scoreNum > 100) {
-      toast.error('Score must be between 0 and 100');
+    if (!studentId || !courseId || !semester || !grade || !score) {
+      toast.error('Please fill in all fields.');
       return;
     }
-
     try {
       await addResult.mutateAsync({
         studentId,
         courseId: BigInt(courseId),
-        semester: semester.trim(),
+        semester,
         grade,
-        score: BigInt(scoreNum),
+        score: BigInt(score),
       });
       toast.success('Result posted successfully!');
       setStudentId('');
@@ -83,41 +59,31 @@ export default function ResultsManagementPage() {
       setSemester('');
       setGrade('');
       setScore('');
-    } catch (error: unknown) {
-      const msg = extractErrorMessage(error);
-      if (isAuthorizationError(error)) {
-        setAuthError(ADMIN_AUTH_ERROR_MSG);
-        toast.error(ADMIN_AUTH_ERROR_MSG);
-      } else {
-        toast.error(`Failed to post result: ${msg}`);
-      }
+    } catch (err) {
+      toast.error(extractErrorMessage(err));
     }
   };
 
-  const getStudentName = (id: string) =>
-    students.find((s) => s.idNumber === id)?.name ?? id;
-
-  const getCourseName = (id: bigint) =>
-    courses.find((c) => c.id === id)?.name ?? String(id);
+  const getCourseName = (courseId: bigint) => {
+    const course = courses.find((c) => c.id === courseId);
+    return course ? `${course.code} - ${course.name}` : `Course ${courseId}`;
+  };
 
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center gap-3">
-        <ClipboardList className="h-7 w-7 text-primary" />
-        <h1 className="text-2xl font-bold">Results Management</h1>
+        <ClipboardList className="h-8 w-8 text-primary" />
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Results Management</h1>
+          <p className="text-muted-foreground">Post and manage student academic results</p>
+        </div>
       </div>
 
-      {authError && (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Authorization Error</AlertTitle>
-          <AlertDescription>
-            {authError}
-            <button className="ml-2 underline font-medium" onClick={() => setAuthError(null)}>
-              Dismiss
-            </button>
-          </AlertDescription>
-        </Alert>
+      {!isActorReady && (
+        <div className="flex items-center gap-2 p-3 bg-muted rounded-lg text-muted-foreground text-sm">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          <span>Connecting to server — please wait before submitting...</span>
+        </div>
       )}
 
       <Card>
@@ -129,64 +95,44 @@ export default function ResultsManagementPage() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <Label>Student</Label>
-              <Select value={studentId} onValueChange={(v) => { setStudentId(v); setAuthError(null); }}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select student" />
-                </SelectTrigger>
-                <SelectContent>
-                  {students.map((s) => (
-                    <SelectItem key={s.idNumber} value={s.idNumber}>
-                      {s.name} ({s.idNumber})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="space-y-2">
+              <Label htmlFor="resultStudentId">Student ID / Matric Number</Label>
+              <Input
+                id="resultStudentId"
+                value={studentId}
+                onChange={(e) => setStudentId(e.target.value)}
+                placeholder="e.g. CSC/2024/001"
+                disabled={addResult.isPending}
+              />
             </div>
-
-            <div className="space-y-1.5">
+            <div className="space-y-2">
               <Label>Course</Label>
-              <Select value={courseId} onValueChange={(v) => { setCourseId(v); setAuthError(null); }}>
+              <Select value={courseId} onValueChange={setCourseId} disabled={addResult.isPending}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select course" />
+                  <SelectValue placeholder="Select a course" />
                 </SelectTrigger>
                 <SelectContent>
-                  {courses.map((c) => (
-                    <SelectItem key={String(c.id)} value={String(c.id)}>
-                      {c.code} — {c.name}
+                  {courses.map((course) => (
+                    <SelectItem key={course.id.toString()} value={course.id.toString()}>
+                      {course.code} - {course.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="semester">Semester</Label>
+            <div className="space-y-2">
+              <Label htmlFor="resultSemester">Semester</Label>
               <Input
-                id="semester"
-                placeholder="e.g. First Semester 2024/2025"
+                id="resultSemester"
                 value={semester}
-                onChange={(e) => { setSemester(e.target.value); setAuthError(null); }}
+                onChange={(e) => setSemester(e.target.value)}
+                placeholder="e.g. First Semester 2024/2025"
+                disabled={addResult.isPending}
               />
             </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="score">Score (0–100)</Label>
-              <Input
-                id="score"
-                type="number"
-                min={0}
-                max={100}
-                placeholder="e.g. 75"
-                value={score}
-                onChange={(e) => { setScore(e.target.value); setAuthError(null); }}
-              />
-            </div>
-
-            <div className="space-y-1.5">
+            <div className="space-y-2">
               <Label>Grade</Label>
-              <Select value={grade} onValueChange={(v) => { setGrade(v); setAuthError(null); }}>
+              <Select value={grade} onValueChange={setGrade} disabled={addResult.isPending}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select grade" />
                 </SelectTrigger>
@@ -199,17 +145,38 @@ export default function ResultsManagementPage() {
                 </SelectContent>
               </Select>
             </div>
-
-            <div className="flex items-end">
-              <Button type="submit" disabled={addResult.isPending} className="w-full">
+            <div className="space-y-2">
+              <Label htmlFor="resultScore">Score (0–100)</Label>
+              <Input
+                id="resultScore"
+                type="number"
+                min="0"
+                max="100"
+                value={score}
+                onChange={(e) => setScore(e.target.value)}
+                placeholder="e.g. 75"
+                disabled={addResult.isPending}
+              />
+            </div>
+            <div className="md:col-span-2">
+              <Button
+                type="submit"
+                disabled={!isActorReady || addResult.isPending}
+                className="w-full md:w-auto"
+              >
                 {addResult.isPending ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Posting...
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    Posting Result...
+                  </>
+                ) : !isActorReady ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    Connecting...
                   </>
                 ) : (
                   <>
-                    <PlusCircle className="mr-2 h-4 w-4" />
+                    <PlusCircle className="h-4 w-4 mr-2" />
                     Post Result
                   </>
                 )}
@@ -221,12 +188,12 @@ export default function ResultsManagementPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>All Results</CardTitle>
+          <CardTitle>All Results ({results.length})</CardTitle>
         </CardHeader>
         <CardContent>
           {resultsLoading ? (
             <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              <Loader2 className="h-6 w-6 animate-spin text-primary" />
             </div>
           ) : results.length === 0 ? (
             <p className="text-center text-muted-foreground py-8">No results posted yet.</p>
@@ -234,23 +201,25 @@ export default function ResultsManagementPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Student</TableHead>
+                  <TableHead>Student ID</TableHead>
                   <TableHead>Course</TableHead>
                   <TableHead>Semester</TableHead>
-                  <TableHead>Score</TableHead>
                   <TableHead>Grade</TableHead>
+                  <TableHead>Score</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {results.map((r, i) => (
-                  <TableRow key={i}>
-                    <TableCell>{getStudentName(r.studentId)}</TableCell>
-                    <TableCell>{getCourseName(r.courseId)}</TableCell>
-                    <TableCell>{r.semester}</TableCell>
-                    <TableCell>{String(r.score)}</TableCell>
+                {results.map((result, idx) => (
+                  <TableRow key={idx}>
+                    <TableCell className="font-mono">{result.studentId}</TableCell>
+                    <TableCell>{getCourseName(result.courseId)}</TableCell>
+                    <TableCell>{result.semester}</TableCell>
                     <TableCell>
-                      <Badge variant={gradeColor(r.grade)}>{r.grade}</Badge>
+                      <span className={`font-bold ${result.grade === 'F' ? 'text-destructive' : 'text-primary'}`}>
+                        {result.grade}
+                      </span>
                     </TableCell>
+                    <TableCell>{result.score.toString()}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -259,5 +228,13 @@ export default function ResultsManagementPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function ResultsManagementPage() {
+  return (
+    <RoleGuard requiredRole={UserRole.admin}>
+      <ResultsManagementContent />
+    </RoleGuard>
   );
 }

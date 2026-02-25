@@ -1,57 +1,39 @@
 {
   "kind": "spec_vs_diff_report",
   "version": "1.0",
-  "generatedAt": "2026-02-25T20:38:12.032Z",
-  "summary": "The diff implements most of the requirements. REQ-23 and REQ-24 are addressed in backend/main.mo with a consolidated isAdmin/requireAdmin helper reading from the stable userProfiles store. REQ-25 is addressed across all six admin panel pages with auth error banners and toast messages. However, there are concerns about whether the backend fix is fully correct (the diff shows Map.empty which may not be stable/persistent), and the diff is truncated so full verification of REQ-24's consolidation across all admin-gated functions is not possible. The frontend coverage for REQ-25 appears complete across the listed pages.",
+  "generatedAt": "2026-02-25T21:35:15.235Z",
+  "summary": "The diff implements the three requirements (REQ-34, REQ-35, REQ-36) substantially. A PortalSelectionPage at /portal with four role cards is added, four role-specific login pages via RoleLoginPage component are created, routes are registered in App.tsx, the ProfileSetupModal is updated with a defaultRole prop and role-locking behavior, Layout.tsx passes the defaultRole to the modal, and the Navigation/Footer/HomePage are updated to route unauthenticated users to /login/{role}. However, some acceptance criteria for REQ-35 are only partially evidenced due to truncation.",
   "missing_requirements": [
     {
-      "id": "REQ-23",
-      "requirement": "The backend helper function that checks for admin role uses the same stable HashMap/Trie/variable that profiles are written to during registration — not a separate or uninitialized store.",
-      "reason": "The diff shows 'let userProfiles = Map.empty<Principal, UserProfile>()' which appears to initialize a new, non-stable map rather than a stable variable. If this is not actually persisted across upgrades as a stable store, it would not satisfy the requirement that the admin check reads from the same stable store used during registration. The diff is truncated so the full stable variable declarations cannot be confirmed.",
+      "id": "REQ-35",
+      "requirement": "After profile setup is completed from a role-specific login page, the user is redirected to the correct role dashboard.",
+      "reason": "The ProfileSetupModal has an onComplete callback and Layout.tsx renders it with defaultRole, but the visible diff does not show that onComplete triggers navigation to the role's dashboard path. The Layout.tsx file does not contain any navigate call in response to profile setup completion.",
       "evidence": [
-        "backend/main.mo"
+        "frontend/src/components/layout/Layout.tsx",
+        "frontend/src/components/auth/ProfileSetupModal.tsx"
       ]
     },
     {
-      "id": "REQ-24",
-      "requirement": "No admin-gated function contains its own inline role-check logic that could diverge from the central helper. All previously broken admin operations succeed after this consolidation.",
-      "reason": "The diff is truncated and only shows the helper definitions (isAdmin, requireAdmin, requireAdminOrStaff). It is not possible to confirm from the truncated diff that every admin-gated function (addFeeItem, addCourse, registerStudent, updateAdmissionStatus, postResult, sendAnnouncement, approveHostelApplication) has been updated to use requireAdmin instead of inline checks.",
+      "id": "REQ-35",
+      "requirement": "If an authenticated user with an existing mismatched role lands on a role-specific login page, show a message indicating they are already registered under a different role and provide a link to their actual dashboard.",
+      "reason": "The RoleLoginPage.tsx is truncated after helper function definitions (getActualDashboardPath, getRoleLabel) and the actual UI rendering of the mismatched-role warning cannot be confirmed as present in the visible diff.",
       "evidence": [
-        "backend/main.mo"
+        "frontend/src/pages/auth/RoleLoginPage.tsx"
       ]
     }
   ],
-  "hallucinated_features": [
-    {
-      "description": "An AccessControl mixin system (MixinAuthorization, AccessControl.initState, assignCallerUserRole, requireUser) was introduced as a separate authorization layer on top of the profile-based isAdmin check.",
-      "reason": "The build request only asked for fixing the role-check logic reading from the stable profiles store and consolidating it into a single helper. It did not request a separate access-control layer, mixin pattern, or assignCallerUserRole flow. This adds new infrastructure beyond fixing the authorization bug.",
-      "evidence": [
-        "backend/main.mo",
-        "frontend/src/hooks/useQueries.ts"
-      ]
-    },
-    {
-      "description": "AdmissionsManagementPage.tsx was also updated with authorization error handling, even though REQ-25 only listed FeeManagementPage, ProgrammeManagementPage, StudentManagementPage, ResultsManagementPage, MessagingPage, and HostelManagementPage.",
-      "reason": "REQ-25 explicitly lists six pages; AdmissionsManagementPage is not among them. Adding auth error handling to it goes beyond the stated requirements.",
-      "evidence": [
-        "frontend/src/pages/admin/AdmissionsManagementPage.tsx"
-      ]
-    }
-  ],
-  "confidence": 0.62,
+  "hallucinated_features": [],
+  "confidence": 0.72,
   "changed_files": [
-    "backend/main.mo",
     "frontend-file-summaries.txt",
+    "frontend/src/App.tsx",
     "frontend/src/components/auth/ProfileSetupModal.tsx",
+    "frontend/src/components/layout/Footer.tsx",
     "frontend/src/components/layout/Layout.tsx",
-    "frontend/src/hooks/useQueries.ts",
-    "frontend/src/pages/admin/AdmissionsManagementPage.tsx",
-    "frontend/src/pages/admin/FeeManagementPage.tsx",
-    "frontend/src/pages/admin/HostelManagementPage.tsx",
-    "frontend/src/pages/admin/MessagingPage.tsx",
-    "frontend/src/pages/admin/ProgrammeManagementPage.tsx",
-    "frontend/src/pages/admin/ResultsManagementPage.tsx",
-    "frontend/src/pages/admin/StudentManagementPage.tsx",
+    "frontend/src/components/layout/Navigation.tsx",
+    "frontend/src/pages/HomePage.tsx",
+    "frontend/src/pages/PortalSelectionPage.tsx",
+    "frontend/src/pages/auth/RoleLoginPage.tsx",
     "project_state.json"
   ]
 }

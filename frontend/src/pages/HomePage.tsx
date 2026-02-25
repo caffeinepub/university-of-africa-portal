@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link } from '@tanstack/react-router';
+import { Link, useNavigate } from '@tanstack/react-router';
 import { useInternetIdentity } from '../hooks/useInternetIdentity';
 import { useGetCallerUserProfile } from '../hooks/useQueries';
 import { UserRole } from '../backend';
@@ -8,7 +8,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import {
   GraduationCap, BookOpen, Users, Building2, Award, ChevronRight,
-  CheckCircle, Bell, FileText, CreditCard, Home, ArrowRight
+  Bell, FileText, CreditCard, Home, ArrowRight, Heart
 } from 'lucide-react';
 
 const PROGRAMMES = [
@@ -35,7 +35,17 @@ const STATS = [
   { label: 'Years of Excellence', value: '25+', icon: Award },
 ];
 
+function Briefcase(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...props} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect width="20" height="14" x="2" y="7" rx="2" ry="2"/>
+      <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
+    </svg>
+  );
+}
+
 export default function HomePage() {
+  const navigate = useNavigate();
   const { identity, login, loginStatus } = useInternetIdentity();
   const { data: userProfile } = useGetCallerUserProfile();
   const isAuthenticated = !!identity;
@@ -51,6 +61,28 @@ export default function HomePage() {
       default: return '/student';
     }
   };
+
+  // For portal cards: authenticated users with matching role go to dashboard,
+  // otherwise go to role-specific login page
+  const getPortalPath = (role: 'student' | 'staff' | 'admin' | 'parent') => {
+    if (isAuthenticated && userProfile) {
+      const roleMap: Record<string, string> = {
+        student: '/student',
+        staff: '/staff',
+        admin: '/admin',
+        parent: '/parent',
+      };
+      return roleMap[role];
+    }
+    return `/login/${role}`;
+  };
+
+  const PORTAL_CARDS = [
+    { role: 'student' as const, label: 'Student', icon: GraduationCap, desc: 'Course registration, results, fees, and more', color: 'bg-blue-50 border-blue-200' },
+    { role: 'staff' as const, label: 'Staff', icon: Briefcase, desc: 'View courses, students, and announcements', color: 'bg-green-50 border-green-200' },
+    { role: 'parent' as const, label: 'Parent', icon: Heart, desc: "Track your child's academic progress", color: 'bg-purple-50 border-purple-200' },
+    { role: 'admin' as const, label: 'Admin', icon: Building2, desc: 'Manage the entire university portal', color: 'bg-amber-50 border-amber-200' },
+  ];
 
   return (
     <div className="min-h-screen">
@@ -92,14 +124,10 @@ export default function HomePage() {
                   </Link>
                 </Button>
               ) : (
-                <Button
-                  size="lg"
-                  variant="ghost"
-                  className="text-white/80 hover:text-white hover:bg-white/10"
-                  onClick={login}
-                  disabled={isLoggingIn}
-                >
-                  {isLoggingIn ? 'Logging in...' : 'Student Login'}
+                <Button asChild size="lg" className="bg-white/10 text-white hover:bg-white/20 border border-white/20">
+                  <Link to="/portal">
+                    Access Portal <ChevronRight className="w-4 h-4 ml-1" />
+                  </Link>
                 </Button>
               )}
             </div>
@@ -132,28 +160,40 @@ export default function HomePage() {
             </p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {[
-              { role: 'Student', path: '/student', icon: GraduationCap, desc: 'Course registration, results, fees, and more', color: 'bg-blue-50 border-blue-200' },
-              { role: 'Staff', path: '/staff', icon: Briefcase, desc: 'View courses, students, and announcements', color: 'bg-green-50 border-green-200' },
-              { role: 'Parent', path: '/parent', icon: Heart, desc: 'Track your child\'s academic progress', color: 'bg-purple-50 border-purple-200' },
-              { role: 'Admin', path: '/admin', icon: Building2, desc: 'Manage the entire university portal', color: 'bg-amber-50 border-amber-200' },
-            ].map(({ role, path, icon: Icon, desc, color }) => (
-              <Link key={role} to={path}>
+            {PORTAL_CARDS.map(({ role, label, icon: Icon, desc, color }) => (
+              <button
+                key={role}
+                onClick={() => navigate({ to: getPortalPath(role) })}
+                className="text-left w-full"
+              >
                 <Card className={`border-2 hover:shadow-navy transition-all duration-200 hover:-translate-y-1 cursor-pointer h-full ${color}`}>
                   <CardContent className="p-6 text-center">
                     <div className="w-14 h-14 bg-navy rounded-2xl flex items-center justify-center mx-auto mb-4">
                       <Icon className="w-7 h-7 text-gold" />
                     </div>
-                    <h3 className="font-serif font-bold text-navy text-lg mb-2">{role} Portal</h3>
+                    <h3 className="font-serif font-bold text-navy text-lg mb-2">{label} Portal</h3>
                     <p className="text-muted-foreground text-sm">{desc}</p>
                     <div className="mt-4 flex items-center justify-center gap-1 text-navy font-semibold text-sm">
-                      Access Portal <ChevronRight className="w-4 h-4" />
+                      {isAuthenticated && userProfile ? 'Open Dashboard' : 'Login & Access'} <ChevronRight className="w-4 h-4" />
                     </div>
                   </CardContent>
                 </Card>
-              </Link>
+              </button>
             ))}
           </div>
+          {!isAuthenticated && (
+            <div className="text-center mt-6">
+              <p className="text-muted-foreground text-sm">
+                Not sure which portal to use?{' '}
+                <button
+                  onClick={() => navigate({ to: '/portal' })}
+                  className="text-navy font-semibold hover:text-gold transition-colors underline underline-offset-2"
+                >
+                  View all portals
+                </button>
+              </p>
+            </div>
+          )}
         </div>
       </section>
 
@@ -176,7 +216,7 @@ export default function HomePage() {
                   'Obtain JAMB UTME form and sit for the examination',
                   'Score minimum of 180 in UTME for most programmes',
                   'Apply for Post-UTME screening on this portal',
-                  'Upload O\'Level results and required documents',
+                  "Upload O'Level results and required documents",
                   'Check admission status and pay acceptance fee',
                 ].map((step, i) => (
                   <div key={i} className="flex items-start gap-3">
@@ -274,23 +314,5 @@ export default function HomePage() {
         </div>
       </section>
     </div>
-  );
-}
-
-// Missing imports for icons used in portal cards
-function Briefcase(props: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg {...props} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <rect width="20" height="14" x="2" y="7" rx="2" ry="2"/>
-      <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
-    </svg>
-  );
-}
-
-function Heart(props: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg {...props} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/>
-    </svg>
   );
 }

@@ -1,4 +1,4 @@
-import { RouterProvider, createRouter, createRootRoute, createRoute, Outlet } from '@tanstack/react-router';
+import { RouterProvider, createRouter, createRootRoute, createRoute } from '@tanstack/react-router';
 import { Toaster } from '@/components/ui/sonner';
 import { ThemeProvider } from 'next-themes';
 
@@ -18,6 +18,7 @@ import ReceiptPage from './pages/student/ReceiptPage';
 import ParentDashboard from './pages/parent/ParentDashboard';
 import StaffDashboard from './pages/staff/StaffDashboard';
 import AdminDashboard from './pages/admin/AdminDashboard';
+import AdminSetupPage from './pages/admin/AdminSetupPage';
 import ProgrammeManagementPage from './pages/admin/ProgrammeManagementPage';
 import StudentManagementPage from './pages/admin/StudentManagementPage';
 import StaffManagementPage from './pages/admin/StaffManagementPage';
@@ -28,6 +29,8 @@ import HostelManagementPage from './pages/admin/HostelManagementPage';
 import MessagingPage from './pages/admin/MessagingPage';
 import PaymentSuccessPage from './pages/PaymentSuccessPage';
 import PaymentFailurePage from './pages/PaymentFailurePage';
+import PortalSelectionPage from './pages/PortalSelectionPage';
+import RoleLoginPage from './pages/auth/RoleLoginPage';
 import Layout from './components/layout/Layout';
 
 // Root route — Layout renders <Outlet /> internally
@@ -40,6 +43,13 @@ const indexRoute = createRoute({ getParentRoute: () => rootRoute, path: '/', com
 const admissionsRoute = createRoute({ getParentRoute: () => rootRoute, path: '/admissions', component: AdmissionsPage });
 const applyRoute = createRoute({ getParentRoute: () => rootRoute, path: '/admissions/apply', component: ApplicationFormPage });
 const checkRoute = createRoute({ getParentRoute: () => rootRoute, path: '/admissions/check', component: AdmissionCheckerPage });
+
+// Portal selection & role-specific login routes
+const portalRoute = createRoute({ getParentRoute: () => rootRoute, path: '/portal', component: PortalSelectionPage });
+const loginStudentRoute = createRoute({ getParentRoute: () => rootRoute, path: '/login/student', component: () => <RoleLoginPage role="student" /> });
+const loginStaffRoute = createRoute({ getParentRoute: () => rootRoute, path: '/login/staff', component: () => <RoleLoginPage role="staff" /> });
+const loginAdminRoute = createRoute({ getParentRoute: () => rootRoute, path: '/login/admin', component: () => <RoleLoginPage role="admin" /> });
+const loginParentRoute = createRoute({ getParentRoute: () => rootRoute, path: '/login/parent', component: () => <RoleLoginPage role="parent" /> });
 
 // Payment routes
 const paymentSuccessRoute = createRoute({ getParentRoute: () => rootRoute, path: '/payment-success', component: PaymentSuccessPage });
@@ -61,6 +71,9 @@ const parentRoute = createRoute({ getParentRoute: () => rootRoute, path: '/paren
 // Staff routes
 const staffRoute = createRoute({ getParentRoute: () => rootRoute, path: '/staff', component: StaffDashboard });
 
+// Admin setup route (no role guard — accessible to first-time admin)
+const adminSetupRoute = createRoute({ getParentRoute: () => rootRoute, path: '/admin/setup', component: AdminSetupPage });
+
 // Admin routes
 const adminRoute = createRoute({ getParentRoute: () => rootRoute, path: '/admin', component: AdminDashboard });
 const adminProgrammesRoute = createRoute({ getParentRoute: () => rootRoute, path: '/admin/programmes', component: ProgrammeManagementPage });
@@ -77,6 +90,11 @@ const routeTree = rootRoute.addChildren([
   admissionsRoute,
   applyRoute,
   checkRoute,
+  portalRoute,
+  loginStudentRoute,
+  loginStaffRoute,
+  loginAdminRoute,
+  loginParentRoute,
   paymentSuccessRoute,
   paymentFailureRoute,
   studentRoute,
@@ -89,6 +107,7 @@ const routeTree = rootRoute.addChildren([
   studentReceiptRoute,
   parentRoute,
   staffRoute,
+  adminSetupRoute,
   adminRoute,
   adminProgrammesRoute,
   adminStudentsRoute,

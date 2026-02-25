@@ -125,6 +125,7 @@ export interface _SERVICE {
   'applyForHostel' : ActorMethod<[string, string], bigint>,
   'assignAccessRole' : ActorMethod<[Principal, UserRole__1], undefined>,
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole__1], undefined>,
+  'bootstrapAdmin' : ActorMethod<[string, string, string], undefined>,
   'checkAdmissionStatus' : ActorMethod<[string], [] | [AdmissionStatus]>,
   'checkAdmissionStatusByName' : ActorMethod<[string], [] | [AdmissionStatus]>,
   'checkUnpaidFees' : ActorMethod<[], Array<FeeType>>,
