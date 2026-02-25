@@ -1,0 +1,98 @@
+{
+  "kind": "coverage_report",
+  "version": "1.0",
+  "generatedAt": "2026-02-25T19:31:48.014Z",
+  "sources": {
+    "buildRequest": true,
+    "implementationPlan": true
+  },
+  "requirements": {
+    "total": 3,
+    "implemented": 3,
+    "items": [
+      {
+        "id": "REQ-15",
+        "summary": "Fix the Admin Panel so that adding students, fees, and courses fully persists end-to-end. In the Motoko backend, ensure addFeeItem, addCourse, and any student-creation/profile-update functions correctly write to stable state and that the corresponding getters return all stored records reliably. In the frontend, wire the FeeManagementPage, ProgrammeManagementPage, and StudentManagementPage forms to their respective backend mutation hooks so that submitted data is saved to the backend (not just local state) and the lists refresh immediately after submission without a page reload.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/hooks/useQueries.ts",
+          "frontend/src/pages/admin/FeeManagementPage.tsx",
+          "frontend/src/pages/admin/ProgrammeManagementPage.tsx",
+          "frontend/src/pages/admin/StudentManagementPage.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/hooks/useQueries.ts",
+          "frontend/src/pages/admin/FeeManagementPage.tsx",
+          "frontend/src/pages/admin/ProgrammeManagementPage.tsx",
+          "frontend/src/pages/admin/StudentManagementPage.tsx"
+        ]
+      },
+      {
+        "id": "REQ-16",
+        "summary": "Add Nigerian Naira (₦) currency formatting with thousand separators to all fee-related amount fields and displays throughout the application. This includes: the FeeManagementPage fee list and input field, the FeeStatementPage outstanding and paid fee amounts, the PaymentHistoryPage payment amounts, the ReceiptPage payment total, and any other page displaying monetary values. Format numbers as ₦1,000,000.00 using the Nigerian locale (en-NG) or equivalent Intl.NumberFormat formatting.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/utils/currency.ts",
+          "frontend/src/pages/admin/FeeManagementPage.tsx",
+          "frontend/src/pages/student/FeeStatementPage.tsx",
+          "frontend/src/pages/student/PaymentHistoryPage.tsx",
+          "frontend/src/pages/student/ReceiptPage.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/utils/currency.ts",
+          "frontend/src/pages/admin/FeeManagementPage.tsx",
+          "frontend/src/pages/student/FeeStatementPage.tsx",
+          "frontend/src/pages/student/PaymentHistoryPage.tsx",
+          "frontend/src/pages/student/ReceiptPage.tsx"
+        ]
+      },
+      {
+        "id": "REQ-17",
+        "summary": "After login, the navigation sidebar/menu for each role (Student, Staff, Parent, Admin) must display a contextual list of all services and features available to that role. For Students: Course Registration, Fee Statement, Results, Transcript, Hostel Application, Payment History, Announcements. For Staff: My Profile, Assigned Courses, Enrolled Students, Announcements, Exams & Records Portal. For Parents: Linked Student Overview, Student Results, Fee Status, Course Registrations. For Admins: Manage Students, Manage Staff, Manage Courses/Programmes, Manage Fees, Admissions, Results Management, Hostel Applications, Messaging/Announcements, Exams & Records Portal. These service links should be visible in the dashboard sidebar or the role-based dropdown menu in the Navigation component after a user is authenticated.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/components/layout/Navigation.tsx",
+          "frontend/src/pages/student/StudentDashboard.tsx",
+          "frontend/src/pages/staff/StaffDashboard.tsx",
+          "frontend/src/pages/parent/ParentDashboard.tsx",
+          "frontend/src/pages/admin/AdminDashboard.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/components/layout/Navigation.tsx",
+          "frontend/src/pages/student/StudentDashboard.tsx",
+          "frontend/src/pages/staff/StaffDashboard.tsx",
+          "frontend/src/pages/parent/ParentDashboard.tsx",
+          "frontend/src/pages/admin/AdminDashboard.tsx"
+        ]
+      }
+    ]
+  },
+  "changedFiles": [
+    "backend/main.mo",
+    "build-request.json",
+    "feature_evidence.json",
+    "frontend-file-summaries.txt",
+    "frontend-implementation-plan.json",
+    "frontend/src/backend.d.ts",
+    "frontend/src/backend.ts",
+    "frontend/src/components/layout/Navigation.tsx",
+    "frontend/src/declarations/backend.did.d.ts",
+    "frontend/src/declarations/backend.did.js",
+    "frontend/src/hooks/useQueries.ts",
+    "frontend/src/pages/admin/AdminDashboard.tsx",
+    "frontend/src/pages/admin/FeeManagementPage.tsx",
+    "frontend/src/pages/admin/ProgrammeManagementPage.tsx",
+    "frontend/src/pages/admin/StudentManagementPage.tsx",
+    "frontend/src/pages/parent/ParentDashboard.tsx",
+    "frontend/src/pages/staff/StaffDashboard.tsx",
+    "frontend/src/pages/student/FeeStatementPage.tsx",
+    "frontend/src/pages/student/PaymentHistoryPage.tsx",
+    "frontend/src/pages/student/ReceiptPage.tsx",
+    "frontend/src/pages/student/StudentDashboard.tsx",
+    "frontend/src/utils/currency.ts",
+    "project_state.json",
+    "scratch/component-selection.json",
+    "spec.md",
+    "spec_vs_diff_report.json"
+  ]
+}

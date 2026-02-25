@@ -1,0 +1,240 @@
+{
+  "schemaVersion": "1.0.0",
+  "projectStateVersion": 7,
+  "summary": "Building a full university portal (similar to University of Africa, Toru-Orua) on the Internet Computer stack with React + Motoko + Internet Identity + Stripe. Includes role-based authentication (Admin, Student, Staff, Parent), public homepage, admissions module, student dashboard, parent portal, admin panel, hostel application, and payment integration.",
+  "architectural_notes": [
+    "Backend: Motoko on Internet Computer (IC) canisters",
+    "Frontend: React + TypeScript + Vite",
+    "Authentication: Internet Identity (passkeys/social login)",
+    "Payments: Stripe integration (Paystack/Flutterwave not supported on this platform)",
+    "Responsive, mobile-friendly UI with clear role-based navigation",
+    "Exams & Records is a separate portal/site for results upload, distinct from the main university portal"
+  ],
+  "known_issues": [
+    "Course addition is broken — users cannot add courses; needs full fix across admin panel and course registration",
+    "Adding students, fees, and courses in the admin panel is broken — data does not persist correctly"
+  ],
+  "isFixRequest": true,
+  "existing_features": [
+    {
+      "id": "feature-design-and-implement-a-visually-compelling-public-homepage-with-a-deep-navy-and-gold-academic-theme-clean-typography-bold-hero-section-with-university-name-and-tagline-navigation-bar-with-links-to-student-staff-parent-and-partner-portals-sections-for-about-introduction-available-programmes-admission-notices-and-acceptance-process-overview-and-a-footer-with-contact-info-and-quick-links",
+      "title": "Design and implement a visually compelling public homepage with a deep navy and gold academic theme — clean typography, bold hero section with university name and tagline, navigation bar with links to Student, Staff, Parent, and Partner portals, sections for About/Introduction, Available Programmes, Admission Notices, and Acceptance Process overview, and a footer with contact info and quick links.",
+      "reqIds": [
+        "REQ-1"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-implement-role-based-authentication-using-internet-identity-support-four-roles-admin-student-staff-and-parent-after-login-detect-or-prompt-the-user-to-select-confirm-their-role-store-user-profiles-with-role-name-and-associated-metadata-e-g-student-id-for-students-staff-id-for-staff-in-the-motoko-backend-route-authenticated-users-to-their-respective-dashboards-based-on-role",
+      "title": "Implement role-based authentication using Internet Identity. Support four roles: Admin, Student, Staff, and Parent. After login, detect or prompt the user to select/confirm their role. Store user profiles with role, name, and associated metadata (e.g., student ID for students, staff ID for staff) in the Motoko backend. Route authenticated users to their respective dashboards based on role.",
+      "reqIds": [
+        "REQ-2"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-build-an-admissions-application-module-include-a-multi-step-application-form-capturing-personal-info-jamb-registration-number-o-level-results-entered-as-text-fields-per-subject-grade-programme-choice-and-document-upload-fields-supporting-base64-encoded-file-references-stored-in-backend-provide-an-admission-list-checker-page-where-applicants-can-enter-their-jamb-number-or-name-to-check-admission-status",
+      "title": "Build an Admissions & Application module. Include a multi-step application form capturing personal info, JAMB registration number, O'Level results (entered as text fields per subject/grade), programme choice, and document upload fields (supporting base64 encoded file references stored in backend). Provide an Admission List Checker page where applicants can enter their JAMB number or name to check admission status.",
+      "reqIds": [
+        "REQ-3"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-create-a-student-dashboard-accessible-only-to-users-with-the-student-role-include-sections-for-course-registration-list-available-courses-per-semester-allow-student-to-register-deregister-fee-statement-display-outstanding-and-paid-fees-results-viewer-display-results-per-semester-with-grade-and-score-and-academic-transcript-download-display-a-print-ready-transcript-view",
+      "title": "Create a Student Dashboard accessible only to users with the Student role. Include sections for: Course Registration (list available courses per semester, allow student to register/deregister), Fee Statement (display outstanding and paid fees), Results Viewer (display results per semester with grade and score), and Academic Transcript Download (display a print-ready transcript view).",
+      "reqIds": [
+        "REQ-4"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-create-a-parent-dashboard-accessible-only-to-users-with-the-parent-role-allow-parents-to-link-their-account-to-a-student-by-entering-the-student-s-id-once-linked-display-the-linked-student-s-academic-results-fee-payment-status-and-course-registrations-in-a-read-only-view",
+      "title": "Create a Parent Dashboard accessible only to users with the Parent role. Allow parents to link their account to a student by entering the student's ID. Once linked, display the linked student's academic results, fee payment status, and course registrations in a read-only view.",
+      "reqIds": [
+        "REQ-5"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-integrate-stripe-for-online-fee-payments-on-the-student-dashboard-fee-statement-page-add-a-pay-now-button-for-outstanding-fees-implement-a-stripe-checkout-flow-on-successful-payment-store-a-payment-record-amount-date-reference-fee-type-in-the-motoko-backend-and-display-a-receipt-show-full-payment-history-with-downloadable-receipt-views",
+      "title": "Integrate Stripe for online fee payments. On the Student Dashboard fee statement page, add a 'Pay Now' button for outstanding fees. Implement a Stripe Checkout flow. On successful payment, store a payment record (amount, date, reference, fee type) in the Motoko backend and display a receipt. Show full payment history with downloadable receipt views.",
+      "reqIds": [
+        "REQ-6"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-build-a-hostel-accommodation-module-include-a-public-facing-hostel-application-form-room-type-preference-session-personal-info-store-submitted-hostel-applications-in-the-backend-admins-can-approve-or-reject-hostel-applications-approved-students-see-an-acceptance-notification-on-their-dashboard",
+      "title": "Build a Hostel & Accommodation module. Include a public-facing hostel application form (room type preference, session, personal info). Store submitted hostel applications in the backend. Admins can approve or reject hostel applications. Approved students see an acceptance notification on their dashboard.",
+      "reqIds": [
+        "REQ-7"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-build-an-admin-panel-accessible-only-to-users-with-the-admin-role-include-management-sections-for-programmes-add-edit-list-students-view-profiles-update-status-staff-view-profiles-admissions-view-applications-approve-reject-post-admission-decisions-results-post-results-per-student-per-course-per-semester-fees-define-fee-items-per-programme-session-hostel-applications-approve-reject-and-a-messaging-tool-to-send-announcements-to-all-students-or-specific-roles",
+      "title": "Build an Admin Panel accessible only to users with the Admin role. Include management sections for: Programmes (add, edit, list), Students (view profiles, update status), Staff (view profiles), Admissions (view applications, approve/reject, post admission decisions), Results (post results per student per course per semester), Fees (define fee items per programme/session), Hostel Applications (approve/reject), and a Messaging tool to send announcements to all students or specific roles.",
+      "reqIds": [
+        "REQ-8"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-create-a-staff-dashboard-accessible-only-to-users-with-the-staff-role-display-the-staff-member-s-profile-assigned-courses-and-allow-staff-to-view-the-students-enrolled-in-their-courses-staff-can-also-view-announcements-sent-by-admin",
+      "title": "Create a Staff Dashboard accessible only to users with the Staff role. Display the staff member's profile, assigned courses, and allow staff to view the students enrolled in their courses. Staff can also view announcements sent by Admin.",
+      "reqIds": [
+        "REQ-9"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-fix-the-admin-panel-so-that-adding-students-fees-and-courses-fully-persists-end-to-end-in-the-motoko-backend-ensure-addfeeitem-addcourse-and-any-student-creation-profile-update-functions-correctly-write-to-stable-state-and-that-the-corresponding-getters-return-all-stored-records-reliably-in-the-frontend-wire-the-feemanagementpage-programmemanagementpage-and-studentmanagementpage-forms-to-their-respective-backend-mutation-hooks-so-that-submitted-data-is-saved-to-the-backend-not-just-local-state-and-the-lists-refresh-immediately-after-submission-without-a-page-reload",
+      "title": "Fix the Admin Panel so that adding students, fees, and courses fully persists end-to-end. In the Motoko backend, ensure addFeeItem, addCourse, and any student-creation/profile-update functions correctly write to stable state and that the corresponding getters return all stored records reliably. In the frontend, wire the FeeManagementPage, ProgrammeManagementPage, and StudentManagementPage forms to their respective backend mutation hooks so that submitted data is saved to the backend (not just local state) and the lists refresh immediately after submission without a page reload.",
+      "reqIds": [
+        "REQ-15"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-nigerian-naira-currency-formatting-with-thousand-separators-to-all-fee-related-amount-fields-and-displays-throughout-the-application-this-includes-the-feemanagementpage-fee-list-and-input-field-the-feestatementpage-outstanding-and-paid-fee-amounts-the-paymenthistorypage-payment-amounts-the-receiptpage-payment-total-and-any-other-page-displaying-monetary-values-format-numbers-as-1-000-000-00-using-the-nigerian-locale-en-ng-or-equivalent-intl-numberformat-formatting",
+      "title": "Add Nigerian Naira (₦) currency formatting with thousand separators to all fee-related amount fields and displays throughout the application. This includes: the FeeManagementPage fee list and input field, the FeeStatementPage outstanding and paid fee amounts, the PaymentHistoryPage payment amounts, the ReceiptPage payment total, and any other page displaying monetary values. Format numbers as ₦1,000,000.00 using the Nigerian locale (en-NG) or equivalent Intl.NumberFormat formatting.",
+      "reqIds": [
+        "REQ-16"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-after-login-the-navigation-sidebar-menu-for-each-role-student-staff-parent-admin-must-display-a-contextual-list-of-all-services-and-features-available-to-that-role-for-students-course-registration-fee-statement-results-transcript-hostel-application-payment-history-announcements-for-staff-my-profile-assigned-courses-enrolled-students-announcements-exams-records-portal-for-parents-linked-student-overview-student-results-fee-status-course-registrations-for-admins-manage-students-manage-staff-manage-courses-programmes-manage-fees-admissions-results-management-hostel-applications-messaging-announcements-exams-records-portal-these-service-links-should-be-visible-in-the-dashboard-sidebar-or-the-role-based-dropdown-menu-in-the-navigation-component-after-a-user-is-authenticated",
+      "title": "After login, the navigation sidebar/menu for each role (Student, Staff, Parent, Admin) must display a contextual list of all services and features available to that role. For Students: Course Registration, Fee Statement, Results, Transcript, Hostel Application, Payment History, Announcements. For Staff: My Profile, Assigned Courses, Enrolled Students, Announcements, Exams & Records Portal. For Parents: Linked Student Overview, Student Results, Fee Status, Course Registrations. For Admins: Manage Students, Manage Staff, Manage Courses/Programmes, Manage Fees, Admissions, Results Management, Hostel Applications, Messaging/Announcements, Exams & Records Portal. These service links should be visible in the dashboard sidebar or the role-based dropdown menu in the Navigation component after a user is authenticated.",
+      "reqIds": [
+        "REQ-17"
+      ],
+      "version": 1
+    }
+  ],
+  "new_feature_requests": [
+    {
+      "id": "AR-1",
+      "summary": "Role-based authentication: Admin, Student, Staff, Parent accounts via Internet Identity",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-2",
+      "summary": "Public homepage with university intro, program pages, admission notices, and portal links",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-3",
+      "summary": "Admissions & application module with forms, document upload, and admission list checker",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-4",
+      "summary": "Student dashboard with course registration, fee statements, and results viewer/transcript download",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-5",
+      "summary": "Parent portal to track student progress",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-6",
+      "summary": "Admin panel to manage programmes, fees, students, staff, results, approvals, and messaging",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-7",
+      "summary": "Hostel/accommodation application forms and acceptance notifications",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-8",
+      "summary": "Online payment integration using Stripe for fee payments with records and receipts",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-9",
+      "summary": "Fix course addition functionality — make course management fully functional across all relevant modules",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-10",
+      "summary": "Build a separate Exams and Records site/portal for student results upload and management",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-11",
+      "summary": "Fix the course addition and management functionality end-to-end. In the Motoko backend, ensure the addCourse function correctly persists courses and that getCourses returns all stored courses reliably. Verify that the CourseRegistration, ResultsManagement, and ProgrammeManagement pages all read from and write to the same shared course store. Ensure the admin can add a course (with code, name, semester, programme) and it immediately appears in the student course registration list and the results posting form without requiring a page reload.",
+      "reqIds": [
+        "REQ-10"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-12",
+      "summary": "Fix course registration persistence for students. Currently, course registration uses local toggle state. Replace it with backend-persisted registration: add registerCourse and deregisterCourse backend functions that store a student's registered courses keyed by their principal. Expose useRegisterCourse and useDeregisterCourse mutation hooks and a useGetStudentCourses query hook in useQueries.ts. Update CourseRegistrationPage to show the student's actual registered courses fetched from the backend, and update the StudentDashboard credit summary to reflect persisted registered course count.",
+      "reqIds": [
+        "REQ-11"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-13",
+      "summary": "Fix the admin Results Management page so that result posting is fully functional. Ensure the student ID field accepts valid student IDs, the course dropdown is populated from the live course list, and the addResult backend function stores results correctly. Add a useGetAllStudents query to populate a student selector dropdown (listing all users with the student role by name and ID) so admins do not need to type IDs manually. After a result is posted, display a success confirmation and allow the admin to post another result.",
+      "reqIds": [
+        "REQ-12"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-14",
+      "summary": "Fix the admin Messaging page so that announcements are stored in the Motoko backend and are retrievable. Add a sendAnnouncement backend function that stores a message with its target role, content, sender principal, and timestamp. Add a getAnnouncements backend function that returns messages filtered by role. Update the MessagingPage to persist announcements via the backend. Update the StaffDashboard to fetch and display announcements targeted to 'staff' or 'all'. Update the StudentDashboard to fetch and display announcements targeted to 'students' or 'all'.",
+      "reqIds": [
+        "REQ-13"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-15",
+      "summary": "Build a separate Exams and Records portal as a distinct frontend application within the same project. This portal is called 'Exams and Records' and is accessible at a dedicated route prefix (e.g., /exams-records). It has its own login via Internet Identity restricted to users with the 'staff' or 'admin' role. The portal includes: (1) A Results Upload page where authorised staff/admin can upload student results by selecting a student, course, semester, entering a score and grade, and submitting — stored in the same backend results store. (2) A Results Browser page to search and view all uploaded results filtered by student ID, course, or semester. (3) A Bulk Results Entry view where staff can enter results for multiple students in a course/semester in a single table form. (4) A dashboard home showing summary stats: total results uploaded, number of students with results, number of courses with results. The portal uses the same deep navy and gold academic theme as the main site.",
+      "reqIds": [
+        "REQ-14"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-16",
+      "summary": "Fix adding students, fees, and courses so they fully persist and work end-to-end in the admin panel",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-17",
+      "summary": "Add Nigerian Naira currency formatting with thousand separators on all fee-related fields and displays",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-18",
+      "summary": "After login, the sidebar/menu for student, staff, and other roles should display a list of available services/features applicable to that role",
+      "reqIds": [],
+      "status": "pending"
+    }
+  ],
+  "gameProjectType": "none",
+  "projectName": "University of Africa Portal",
+  "clarification_mode": "instant",
+  "clarification_rounds": 0
+}

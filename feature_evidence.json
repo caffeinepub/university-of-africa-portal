@@ -1,0 +1,79 @@
+{
+  "kind": "feature_evidence_report",
+  "features": [
+    {
+      "featureId": "feature-fix-the-admin-panel-so-that-adding-students-fees-and-courses-fully-persists-end-to-end-in-the-motoko-backend-ensure-addfeeitem-addcourse-and-any-student-creation-profile-update-functions-correctly-write-to-stable-state-and-that-the-corresponding-getters-return-all-stored-records-reliably-in-the-frontend-wire-the-feemanagementpage-programmemanagementpage-and-studentmanagementpage-forms-to-their-respective-backend-mutation-hooks-so-that-submitted-data-is-saved-to-the-backend-not-just-local-state-and-the-lists-refresh-immediately-after-submission-without-a-page-reload",
+      "featureTitle": "Fix the Admin Panel so that adding students, fees, and courses fully persists end-to-end. In the Motoko backend, ensure addFeeItem, addCourse, and any student-creation/profile-update functions correctly write to stable state and that the corresponding getters return all stored records reliably. In the frontend, wire the FeeManagementPage, ProgrammeManagementPage, and StudentManagementPage forms to their respective backend mutation hooks so that submitted data is saved to the backend (not just local state) and the lists refresh immediately after submission without a page reload.",
+      "files": [
+        "frontend/src/hooks/useQueries.ts",
+        "frontend/src/pages/admin/FeeManagementPage.tsx",
+        "frontend/src/pages/admin/ProgrammeManagementPage.tsx",
+        "frontend/src/pages/admin/StudentManagementPage.tsx"
+      ],
+      "components": [
+        "authorization@4.0.0",
+        "stripe@3.0.0",
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0",
+        "http-outcalls@3.0.0"
+      ],
+      "testIds": [
+        "REQ-15"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-add-nigerian-naira-currency-formatting-with-thousand-separators-to-all-fee-related-amount-fields-and-displays-throughout-the-application-this-includes-the-feemanagementpage-fee-list-and-input-field-the-feestatementpage-outstanding-and-paid-fee-amounts-the-paymenthistorypage-payment-amounts-the-receiptpage-payment-total-and-any-other-page-displaying-monetary-values-format-numbers-as-1-000-000-00-using-the-nigerian-locale-en-ng-or-equivalent-intl-numberformat-formatting",
+      "featureTitle": "Add Nigerian Naira (₦) currency formatting with thousand separators to all fee-related amount fields and displays throughout the application. This includes: the FeeManagementPage fee list and input field, the FeeStatementPage outstanding and paid fee amounts, the PaymentHistoryPage payment amounts, the ReceiptPage payment total, and any other page displaying monetary values. Format numbers as ₦1,000,000.00 using the Nigerian locale (en-NG) or equivalent Intl.NumberFormat formatting.",
+      "files": [
+        "frontend/src/pages/admin/FeeManagementPage.tsx",
+        "frontend/src/pages/student/FeeStatementPage.tsx",
+        "frontend/src/pages/student/PaymentHistoryPage.tsx",
+        "frontend/src/pages/student/ReceiptPage.tsx",
+        "frontend/src/utils/currency.ts"
+      ],
+      "components": [
+        "authorization@4.0.0",
+        "stripe@3.0.0",
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0",
+        "http-outcalls@3.0.0"
+      ],
+      "testIds": [
+        "REQ-16"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-after-login-the-navigation-sidebar-menu-for-each-role-student-staff-parent-admin-must-display-a-contextual-list-of-all-services-and-features-available-to-that-role-for-students-course-registration-fee-statement-results-transcript-hostel-application-payment-history-announcements-for-staff-my-profile-assigned-courses-enrolled-students-announcements-exams-records-portal-for-parents-linked-student-overview-student-results-fee-status-course-registrations-for-admins-manage-students-manage-staff-manage-courses-programmes-manage-fees-admissions-results-management-hostel-applications-messaging-announcements-exams-records-portal-these-service-links-should-be-visible-in-the-dashboard-sidebar-or-the-role-based-dropdown-menu-in-the-navigation-component-after-a-user-is-authenticated",
+      "featureTitle": "After login, the navigation sidebar/menu for each role (Student, Staff, Parent, Admin) must display a contextual list of all services and features available to that role. For Students: Course Registration, Fee Statement, Results, Transcript, Hostel Application, Payment History, Announcements. For Staff: My Profile, Assigned Courses, Enrolled Students, Announcements, Exams & Records Portal. For Parents: Linked Student Overview, Student Results, Fee Status, Course Registrations. For Admins: Manage Students, Manage Staff, Manage Courses/Programmes, Manage Fees, Admissions, Results Management, Hostel Applications, Messaging/Announcements, Exams & Records Portal. These service links should be visible in the dashboard sidebar or the role-based dropdown menu in the Navigation component after a user is authenticated.",
+      "files": [
+        "frontend/src/components/layout/Navigation.tsx",
+        "frontend/src/pages/admin/AdminDashboard.tsx",
+        "frontend/src/pages/parent/ParentDashboard.tsx",
+        "frontend/src/pages/staff/StaffDashboard.tsx",
+        "frontend/src/pages/student/StudentDashboard.tsx"
+      ],
+      "components": [
+        "authorization@4.0.0",
+        "stripe@3.0.0",
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0",
+        "http-outcalls@3.0.0"
+      ],
+      "testIds": [
+        "REQ-17"
+      ],
+      "confidence": "high"
+    }
+  ]
+}

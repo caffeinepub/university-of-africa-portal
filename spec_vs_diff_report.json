@@ -1,0 +1,72 @@
+{
+  "kind": "spec_vs_diff_report",
+  "version": "1.0",
+  "generatedAt": "2026-02-25T19:31:48.009Z",
+  "summary": "The diff implements the three requested requirements with good coverage. REQ-15 is largely addressed via backend changes and frontend wiring of mutations with toast notifications. REQ-16 is addressed via a new currency utility and its usage across fee-related pages. REQ-17 is addressed via role-based service menus in Navigation.tsx and individual dashboard sidebars. However, several specific gaps exist: staffServices and parentServices in Navigation.tsx are incomplete (missing several required menu items), the Student nav in Navigation.tsx is missing 'Announcements', and the admin Navigation menu is missing 'Exams & Records Portal'.",
+  "missing_requirements": [
+    {
+      "id": "REQ-17",
+      "requirement": "Staff service menu in Navigation must include: My Profile, Assigned Courses, Enrolled Students, Announcements, Exams & Records Portal",
+      "reason": "In Navigation.tsx, staffServices only contains 'Dashboard' — all five required staff service links are missing from the Navigation dropdown, though StaffDashboard.tsx sidebar has them.",
+      "evidence": [
+        "frontend/src/components/layout/Navigation.tsx",
+        "frontend/src/pages/staff/StaffDashboard.tsx"
+      ]
+    },
+    {
+      "id": "REQ-17",
+      "requirement": "Parent service menu in Navigation must include: Linked Student Overview, Student Results, Fee Status, Course Registrations",
+      "reason": "In Navigation.tsx, parentServices only contains 'Dashboard' — all four required parent service links are missing from the Navigation dropdown, though ParentDashboard.tsx sidebar has them.",
+      "evidence": [
+        "frontend/src/components/layout/Navigation.tsx",
+        "frontend/src/pages/parent/ParentDashboard.tsx"
+      ]
+    },
+    {
+      "id": "REQ-17",
+      "requirement": "Admin service menu in Navigation must include 'Exams & Records Portal'",
+      "reason": "Navigation.tsx adminServices does not include an 'Exams & Records Portal' entry, though AdminDashboard.tsx sidebar does include it.",
+      "evidence": [
+        "frontend/src/components/layout/Navigation.tsx",
+        "frontend/src/pages/admin/AdminDashboard.tsx"
+      ]
+    },
+    {
+      "id": "REQ-17",
+      "requirement": "Student service menu in Navigation must include 'Announcements'",
+      "reason": "Navigation.tsx studentServices does not include an 'Announcements' link, though StudentDashboard.tsx sidebar includes it.",
+      "evidence": [
+        "frontend/src/components/layout/Navigation.tsx",
+        "frontend/src/pages/student/StudentDashboard.tsx"
+      ]
+    }
+  ],
+  "hallucinated_features": [
+    {
+      "description": "Student search/filter functionality added to StudentManagementPage",
+      "reason": "The build request does not mention a search feature for the student list, but the diff adds a searchQuery state and filters students by name, ID, and email.",
+      "evidence": [
+        "frontend/src/pages/admin/StudentManagementPage.tsx"
+      ]
+    }
+  ],
+  "confidence": 0.78,
+  "changed_files": [
+    "backend/main.mo",
+    "frontend-file-summaries.txt",
+    "frontend/src/components/layout/Navigation.tsx",
+    "frontend/src/hooks/useQueries.ts",
+    "frontend/src/pages/admin/AdminDashboard.tsx",
+    "frontend/src/pages/admin/FeeManagementPage.tsx",
+    "frontend/src/pages/admin/ProgrammeManagementPage.tsx",
+    "frontend/src/pages/admin/StudentManagementPage.tsx",
+    "frontend/src/pages/parent/ParentDashboard.tsx",
+    "frontend/src/pages/staff/StaffDashboard.tsx",
+    "frontend/src/pages/student/FeeStatementPage.tsx",
+    "frontend/src/pages/student/PaymentHistoryPage.tsx",
+    "frontend/src/pages/student/ReceiptPage.tsx",
+    "frontend/src/pages/student/StudentDashboard.tsx",
+    "frontend/src/utils/currency.ts",
+    "project_state.json"
+  ]
+}
