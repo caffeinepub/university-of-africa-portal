@@ -112,30 +112,61 @@ actor {
   let courseRegistrations = Map.empty<Text, List.List<Nat>>();
   var stripeConfig : ?Stripe.StripeConfiguration = null;
 
-  // 4. USER AUTHENTICATION & PROFILE MANAGEMENT
+  // 4. AUTHORIZATION HELPERS
 
-  // Required by instructions: get caller's own profile
-  public query ({ caller }) func getCallerUserProfile() : async ?UserProfile {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only authenticated users can get their profile");
+  // Consolidated admin check: reads from the stable userProfiles store.
+  // A caller is considered an application-level admin if their stored profile has role = #admin.
+  func isAdmin(caller : Principal) : Bool {
+    switch (userProfiles.get(caller)) {
+      case (null) { false };
+      case (?profile) { profile.role == #admin };
     };
+  };
+
+  // Require that the caller is an authenticated user (not anonymous/guest).
+  func requireUser(caller : Principal) {
+    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
+      Runtime.trap("Unauthorized: Only authenticated users can perform this action");
+    };
+  };
+
+  // Require that the caller is an application-level admin.
+  func requireAdmin(caller : Principal) {
+    requireUser(caller);
+    if (not isAdmin(caller)) {
+      Runtime.trap("Unauthorized: Only admins can perform this action");
+    };
+  };
+
+  // Require that the caller is an admin or staff member.
+  func requireAdminOrStaff(caller : Principal) {
+    requireUser(caller);
+    switch (userProfiles.get(caller)) {
+      case (null) { Runtime.trap("Profile not found") };
+      case (?profile) {
+        if (profile.role != #admin and profile.role != #staff) {
+          Runtime.trap("Unauthorized: Only admins or staff can perform this action");
+        };
+      };
+    };
+  };
+
+  // 5. USER AUTHENTICATION & PROFILE MANAGEMENT
+
+  public query ({ caller }) func getCallerUserProfile() : async ?UserProfile {
+    requireUser(caller);
     userProfiles.get(caller);
   };
 
-  // Required by instructions: save caller's own profile
   public shared ({ caller }) func saveCallerUserProfile(profile : UserProfile) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only authenticated users can save profiles");
-    };
+    requireUser(caller);
     userProfiles.add(caller, profile);
   };
 
-  // Required by instructions: get another user's profile (own profile or admin can view any)
+  // Only allow admin or the user themselves to view another specific profile
   public query ({ caller }) func getUserProfile(user : Principal) : async ?UserProfile {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only authenticated users can view profiles");
-    };
-    if (caller != user and not AccessControl.isAdmin(accessControlState, caller)) {
+    requireUser(caller);
+    if (caller != user and not isAdmin(caller)) {
       Runtime.trap("Unauthorized: Can only view your own profile");
     };
     userProfiles.get(user);
@@ -143,9 +174,7 @@ actor {
 
   // Register a new profile for the caller
   public shared ({ caller }) func registerProfile(role : UserRole, name : Text, idNumber : Text, email : Text) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only authenticated users can register a profile");
-    };
+    requireUser(caller);
     let profile : UserProfile = {
       principal = caller;
       name;
@@ -158,9 +187,7 @@ actor {
 
   // Admin: add a new student profile directly (bypass caller validation)
   public shared ({ caller }) func addStudentProfile(name : Text, idNumber : Text, email : Text) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
-      Runtime.trap("Unauthorized: Only admins can add student profiles");
-    };
+    requireAdmin(caller);
 
     let dummyPrincipal = Principal.fromText("aaaaa-aa"); // Placeholder principal
 
@@ -176,9 +203,7 @@ actor {
 
   // Get the caller's role
   public query ({ caller }) func getCallerRole() : async ?UserRole {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only authenticated users can get their role");
-    };
+    requireUser(caller);
     let profile = userProfiles.get(caller);
     switch (profile) {
       case (null) { null };
@@ -186,8 +211,12 @@ actor {
     };
   };
 
-  // 5. ADMISSIONS & APPLICATIONS
-  // Submitting an application is public (applicants may not be registered users yet)
+  public query ({ caller }) func getAllUserProfiles() : async [UserProfile] {
+    requireAdmin(caller);
+    userProfiles.values().toArray();
+  };
+
+  // 6. ADMISSIONS & APPLICATIONS
   public shared ({ caller }) func submitApplication(
     name : Text,
     jambNumber : Text,
@@ -209,7 +238,6 @@ actor {
     admissionAppId;
   };
 
-  // Public admission status checker (no auth required - public-facing feature)
   public query func checkAdmissionStatus(jambNumber : Text) : async ?AdmissionStatus {
     let iter = admissionApplications.values();
     switch (iter.find(func(app) { app.jambNumber == jambNumber })) {
@@ -218,7 +246,6 @@ actor {
     };
   };
 
-  // Public admission status checker by name (no auth required - public-facing feature)
   public query func checkAdmissionStatusByName(name : Text) : async ?AdmissionStatus {
     let iter = admissionApplications.values();
     switch (iter.find(func(app) { app.name == name })) {
@@ -227,19 +254,13 @@ actor {
     };
   };
 
-  // Admin: view all admission applications
   public query ({ caller }) func getAllAdmissionApplications() : async [AdmissionApplication] {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
-      Runtime.trap("Unauthorized: Only admins can view all admission applications");
-    };
+    requireAdmin(caller);
     admissionApplications.values().toArray();
   };
 
-  // Admin: approve or reject an admission application
   public shared ({ caller }) func updateAdmissionStatus(appId : Nat, status : AdmissionStatus) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
-      Runtime.trap("Unauthorized: Only admins can update admission status");
-    };
+    requireAdmin(caller);
     switch (admissionApplications.get(appId)) {
       case (null) { Runtime.trap("Application not found") };
       case (?app) {
@@ -257,11 +278,9 @@ actor {
     };
   };
 
-  // 6. COURSE MANAGEMENT
+  // 7. COURSE MANAGEMENT
   public shared ({ caller }) func addCourse(code : Text, name : Text, semester : Text, programme : Text) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
-      Runtime.trap("Unauthorized: Only admins can add courses");
-    };
+    requireAdmin(caller);
     courseId += 1;
     let course : Course = {
       id = courseId;
@@ -273,19 +292,14 @@ actor {
     courses.add(courseId, course);
   };
 
-  // Courses are viewable by any authenticated user
   public query ({ caller }) func getCourses() : async [Course] {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only authenticated users can view courses");
-    };
+    requireUser(caller);
     courses.values().toArray();
   };
 
-  // 7. FEE MANAGEMENT
+  // 8. FEE MANAGEMENT
   public shared ({ caller }) func addFeeType(name : Text, amount : Nat, programme : Text, session : Text) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
-      Runtime.trap("Unauthorized: Only admins can add fee types");
-    };
+    requireAdmin(caller);
     feeTypeId += 1;
     let feeType : FeeType = {
       id = feeTypeId;
@@ -297,23 +311,18 @@ actor {
     feeTypes.add(feeTypeId, feeType);
   };
 
-  // Fee types viewable by authenticated users
   public query ({ caller }) func getFeeTypes() : async [FeeType] {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only authenticated users can view fee types");
-    };
+    requireUser(caller);
     feeTypes.values().toArray();
   };
 
-  // 8. PAYMENT PROCESSING (STRIPE INTEGRATION)
+  // 9. PAYMENT PROCESSING (STRIPE INTEGRATION)
   public query ({ caller }) func isStripeConfigured() : async Bool {
     stripeConfig != null;
   };
 
   public shared ({ caller }) func setStripeConfiguration(config : Stripe.StripeConfiguration) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
-      Runtime.trap("Unauthorized: Only admins can configure Stripe");
-    };
+    requireAdmin(caller);
     stripeConfig := ?config;
   };
 
@@ -335,24 +344,17 @@ actor {
     };
   };
 
-  // Only authenticated users can create checkout sessions
   public shared ({ caller }) func createCheckoutSession(items : [Stripe.ShoppingItem], successUrl : Text, cancelUrl : Text) : async Text {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only authenticated users can create checkout sessions");
-    };
+    requireUser(caller);
     await Stripe.createCheckoutSession(getStripeConfiguration(), caller, items, successUrl, cancelUrl, transform);
   };
 
-  // Stripe session status is public (needed for redirect callback handling)
   public func getStripeSessionStatus(sessionId : Text) : async Stripe.StripeSessionStatus {
     await Stripe.getSessionStatus(getStripeConfiguration(), sessionId, transform);
   };
 
-  // Only authenticated users can record their own payments
   public shared ({ caller }) func recordPayment(amount : Nat, reference : ?Text, feeType : Text) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only authenticated users can record payments");
-    };
+    requireUser(caller);
     paymentId += 1;
     let payment : PaymentRecord = {
       id = paymentId;
@@ -370,11 +372,8 @@ actor {
     payments.add(paymentId, payment);
   };
 
-  // Admin-only: record payment on behalf of a student
   public shared ({ caller }) func recordPaymentByAdmin(studentId : Text, amount : Nat, reference : Text, feeType : Text) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
-      Runtime.trap("Unauthorized: Only admins can record payments for others");
-    };
+    requireAdmin(caller);
     paymentId += 1;
     let payment : PaymentRecord = {
       id = paymentId;
@@ -393,31 +392,22 @@ actor {
     Int.compare(p2.date, p1.date);
   };
 
-  // Only authenticated users can view their own payment history
   public query ({ caller }) func getPaymentHistory() : async [PaymentRecord] {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only authenticated users can view payment history");
-    };
+    requireUser(caller);
     let userId = getCurrentUserId(caller);
     payments.values().toArray().filter(func(p) { p.studentId == userId }).sort(
       comparePaymentsByDate
     );
   };
 
-  // Admin: view all payments
   public query ({ caller }) func getAllPayments() : async [PaymentRecord] {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
-      Runtime.trap("Unauthorized: Only admins can view all payments");
-    };
+    requireAdmin(caller);
     payments.values().toArray().sort(comparePaymentsByDate);
   };
 
-  // 9. HOSTEL & ACCOMMODATION MANAGEMENT
-  // Only authenticated users can apply for hostel
+  // 10. HOSTEL & ACCOMMODATION MANAGEMENT
   public shared ({ caller }) func applyForHostel(roomType : Text, session : Text) : async Nat {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only authenticated users can apply for hostel");
-    };
+    requireUser(caller);
     hostelAppId += 1;
     let application : HostelApplication = {
       id = hostelAppId;
@@ -430,19 +420,13 @@ actor {
     hostelAppId;
   };
 
-  // Admin: view all hostel applications
   public query ({ caller }) func getAllHostelApplications() : async [HostelApplication] {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
-      Runtime.trap("Unauthorized: Only admins can view all hostel applications");
-    };
+    requireAdmin(caller);
     hostelApplications.values().toArray();
   };
 
-  // Admin: approve or reject hostel application
   public shared ({ caller }) func updateHostelApplicationStatus(appId : Nat, status : { #pending; #approved; #rejected }) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
-      Runtime.trap("Unauthorized: Only admins can update hostel application status");
-    };
+    requireAdmin(caller);
     switch (hostelApplications.get(appId)) {
       case (null) { Runtime.trap("Hostel application not found") };
       case (?app) {
@@ -458,17 +442,13 @@ actor {
     };
   };
 
-  // Authenticated user: view their own hostel application status
   public query ({ caller }) func getMyHostelApplication() : async ?HostelApplication {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only authenticated users can view their hostel application");
-    };
+    requireUser(caller);
     let userId = getCurrentUserId(caller);
     hostelApplications.values().find(func(app) { app.studentId == userId });
   };
 
-  // 10. RESULTS MANAGEMENT
-  // Admin or staff can post results for a student
+  // 11. RESULTS MANAGEMENT
   public shared ({ caller }) func addResult(
     studentId : Text,
     courseIdParam : Nat,
@@ -476,18 +456,7 @@ actor {
     grade : Text,
     score : Nat,
   ) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only authenticated users can post results");
-    };
-    // Only admin or staff may post results
-    switch (userProfiles.get(caller)) {
-      case (null) { Runtime.trap("Profile not found") };
-      case (?profile) {
-        if (profile.role != #admin and profile.role != #staff) {
-          Runtime.trap("Unauthorized: Only admins or staff can post results");
-        };
-      };
-    };
+    requireAdminOrStaff(caller);
     let result = {
       studentId;
       courseId = courseIdParam;
@@ -503,11 +472,8 @@ actor {
     results.add(studentId, existingList);
   };
 
-  // Authenticated user: view their own results
   public query ({ caller }) func getResults() : async [Result] {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only authenticated users can view results");
-    };
+    requireUser(caller);
     let userId = getCurrentUserId(caller);
     switch (results.get(userId)) {
       case (null) { [] };
@@ -515,18 +481,14 @@ actor {
     };
   };
 
-  // View results for a specific student (admin, staff, or linked parent only)
   public query ({ caller }) func getResultsForStudent(studentId : Text) : async [Result] {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only authenticated users can view results");
-    };
+    requireUser(caller);
     switch (userProfiles.get(caller)) {
       case (null) { Runtime.trap("Profile not found") };
       case (?profile) {
         if (profile.role == #admin or profile.role == #staff) {
-          // Admin and staff can view any student's results
+          // allowed
         } else if (profile.role == #parent) {
-          // Parents can only view their linked student's results
           switch (linkedParents.get(profile.idNumber)) {
             case (null) { Runtime.trap("No student linked to this parent account") };
             case (?linkedStudentId) {
@@ -536,7 +498,6 @@ actor {
             };
           };
         } else if (profile.role == #student) {
-          // Students can only view their own results
           if (studentId != profile.idNumber) {
             Runtime.trap("Unauthorized: Students can only view their own results");
           };
@@ -551,19 +512,8 @@ actor {
     };
   };
 
-  // Admin or staff: get all results across all students (for Exams and Records portal)
   public query ({ caller }) func getAllResults() : async [Result] {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only authenticated users can view all results");
-    };
-    switch (userProfiles.get(caller)) {
-      case (null) { Runtime.trap("Profile not found") };
-      case (?profile) {
-        if (profile.role != #admin and profile.role != #staff) {
-          Runtime.trap("Unauthorized: Only admins or staff can view all results");
-        };
-      };
-    };
+    requireAdminOrStaff(caller);
     var allResults : [Result] = [];
     for (resultList in results.values()) {
       allResults := allResults.concat(resultList.toArray());
@@ -571,12 +521,8 @@ actor {
     allResults;
   };
 
-  // Only authenticated users (parents) can link to a student
   public shared ({ caller }) func linkParentToStudent(studentId : Text) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only authenticated users can link accounts");
-    };
-    // Verify caller is a parent
+    requireUser(caller);
     switch (userProfiles.get(caller)) {
       case (null) { Runtime.trap("Profile not found") };
       case (?profile) {
@@ -588,11 +534,9 @@ actor {
     };
   };
 
-  // 11. DASHBOARD ROLE ROUTING
+  // 12. DASHBOARD ROLE ROUTING
   public query ({ caller }) func getUserDashboard() : async Text {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only authenticated users can access dashboards");
-    };
+    requireUser(caller);
     switch (userProfiles.get(caller)) {
       case (null) { Runtime.trap("Profile not found") };
       case (?profile) {
@@ -606,12 +550,9 @@ actor {
     };
   };
 
-  // 12. AGGREGATED DATA QUERIES
-  // Only authenticated users can get their own aggregated data
+  // 13. AGGREGATED DATA QUERIES
   public shared ({ caller }) func getAggregatedStudentData() : async ([Result], [PaymentRecord]) {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only authenticated users can access their data");
-    };
+    requireUser(caller);
     let userId = getCurrentUserId(caller);
     let resultsData = switch (results.get(userId)) {
       case (null) { [] };
@@ -621,11 +562,8 @@ actor {
     (resultsData, paymentsData);
   };
 
-  // Only authenticated users can check their unpaid fees
   public query ({ caller }) func checkUnpaidFees() : async [FeeType] {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only authenticated users can check unpaid fees");
-    };
+    requireUser(caller);
     let userProfile = switch (userProfiles.get(caller)) {
       case (null) { Runtime.trap("User not found") };
       case (?profile) { profile };
@@ -648,42 +586,20 @@ actor {
     unpaidFeeTypes;
   };
 
-  // 13. ADMIN: STUDENT & STAFF MANAGEMENT
-  // Admin: view all user profiles
-  public query ({ caller }) func getAllUserProfiles() : async [UserProfile] {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
-      Runtime.trap("Unauthorized: Only admins can view all user profiles");
-    };
-    userProfiles.values().toArray();
-  };
+  // 14. ADMIN: STUDENT & STAFF MANAGEMENT
 
-  // Admin or staff: get all students (for result posting dropdowns)
   public query ({ caller }) func getAllStudents() : async [UserProfile] {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only authenticated users can view student list");
-    };
-    switch (userProfiles.get(caller)) {
-      case (null) { Runtime.trap("Profile not found") };
-      case (?profile) {
-        if (profile.role != #admin and profile.role != #staff) {
-          Runtime.trap("Unauthorized: Only admins or staff can view the student list");
-        };
-      };
-    };
+    requireAdminOrStaff(caller);
     userProfiles.values().toArray().filter(func(p) { p.role == #student });
   };
 
-  // Admin: assign access control role to a user
   public shared ({ caller }) func assignAccessRole(user : Principal, role : AccessControl.UserRole) : async () {
-    // AccessControl.assignRole includes its own admin-only guard
+    // AccessControl.assignRole already includes its own admin-only guard internally
     AccessControl.assignRole(accessControlState, caller, user, role);
   };
 
-  // Course Registration
   public shared ({ caller }) func registerCourse(courseIdParam : Nat) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only authenticated users can register courses");
-    };
+    requireUser(caller);
     let userId = getCurrentUserId(caller);
     let currentCourses = switch (courseRegistrations.get(userId)) {
       case (null) { List.empty<Nat>() };
@@ -697,9 +613,7 @@ actor {
   };
 
   public shared ({ caller }) func deregisterCourse(courseIdParam : Nat) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only authenticated users can deregister courses");
-    };
+    requireUser(caller);
     let userId = getCurrentUserId(caller);
     let currentCourses = switch (courseRegistrations.get(userId)) {
       case (null) { List.empty<Nat>() };
@@ -710,9 +624,7 @@ actor {
   };
 
   public query ({ caller }) func getRegisteredCourses() : async [Nat] {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only authenticated users can get registered courses");
-    };
+    requireUser(caller);
     let userId = getCurrentUserId(caller);
     switch (courseRegistrations.get(userId)) {
       case (null) { [] };
@@ -720,11 +632,8 @@ actor {
     };
   };
 
-  // Announcements
   public shared ({ caller }) func sendAnnouncement(content : Text, targetRole : Text) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
-      Runtime.trap("Unauthorized: Only admins can send announcements");
-    };
+    requireAdmin(caller);
     announcementId += 1;
     let announcement : Announcement = {
       id = announcementId;
@@ -735,11 +644,8 @@ actor {
     announcements.add(announcementId, announcement);
   };
 
-  // Announcements are viewable by authenticated users only
   public query ({ caller }) func getAnnouncements(role : Text) : async [Announcement] {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only authenticated users can view announcements");
-    };
+    requireUser(caller);
     let filteredAnnouncements = Array.fromIter(
       announcements.values().filter(
         func(announcement) { announcement.targetRole == role or announcement.targetRole == "all" }

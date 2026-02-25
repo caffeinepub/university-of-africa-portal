@@ -1,165 +1,219 @@
 import React from 'react';
-import { Link, useNavigate, useRouterState } from '@tanstack/react-router';
+import { useNavigate } from '@tanstack/react-router';
+import { useGetCallerUserProfile, useGetCourses, useGetResults, useCheckUnpaidFees } from '../../hooks/useQueries';
+import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
+import { Button } from '../../components/ui/button';
+import { Skeleton } from '../../components/ui/skeleton';
+import { Alert, AlertDescription, AlertTitle } from '../../components/ui/alert';
 import {
   BookOpen,
+  FileText,
   CreditCard,
-  Award,
-  ScrollText,
-  Building2,
-  Receipt,
-  Bell,
   Home,
+  GraduationCap,
+  AlertCircle,
   ChevronRight,
+  ClipboardList,
+  Printer,
+  RefreshCw,
 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { useGetCallerUserProfile, useGetResults, useCheckUnpaidFees, useGetRegisteredCourses } from '../../hooks/useQueries';
 
-const studentNavItems = [
-  { label: 'Dashboard', to: '/student/dashboard', icon: Home },
-  { label: 'Course Registration', to: '/student/courses', icon: BookOpen },
-  { label: 'Fee Statement', to: '/student/fees', icon: CreditCard },
-  { label: 'Payment History', to: '/student/payment-history', icon: Receipt },
-  { label: 'My Results', to: '/student/results', icon: Award },
-  { label: 'Transcript', to: '/student/transcript', icon: ScrollText },
-  { label: 'Hostel Application', to: '/student/hostel', icon: Building2 },
-  { label: 'Announcements', to: '/student/announcements', icon: Bell },
-];
+const sidebarLinks = [
+  { label: 'Dashboard', href: '/student', icon: GraduationCap },
+  { label: 'My Courses', href: '/student/courses', icon: BookOpen },
+  { label: 'Results', href: '/student/results', icon: FileText },
+  { label: 'Fee Statement', href: '/student/fees', icon: CreditCard },
+  { label: 'Payment History', href: '/student/payments', icon: CreditCard },
+  { label: 'Hostel Application', href: '/student/hostel', icon: Home },
+  { label: 'Transcript', href: '/student/transcript', icon: Printer },
+] as const;
+
+const serviceCards = [
+  { label: 'My Courses', href: '/student/courses', icon: BookOpen, desc: 'View & register courses' },
+  { label: 'Results', href: '/student/results', icon: FileText, desc: 'Check academic results' },
+  { label: 'Fee Statement', href: '/student/fees', icon: CreditCard, desc: 'View & pay fees' },
+  { label: 'Payment History', href: '/student/payments', icon: ClipboardList, desc: 'Transaction records' },
+  { label: 'Hostel', href: '/student/hostel', icon: Home, desc: 'Apply for accommodation' },
+  { label: 'Transcript', href: '/student/transcript', icon: Printer, desc: 'Print official transcript' },
+] as const;
 
 export default function StudentDashboard() {
   const navigate = useNavigate();
-  const routerState = useRouterState();
-  const currentPath = routerState.location.pathname;
+  const {
+    data: userProfile,
+    isLoading: profileLoading,
+    isFetched: profileFetched,
+    error: profileError,
+    refetch: refetchProfile,
+  } = useGetCallerUserProfile();
 
-  const { data: profile } = useGetCallerUserProfile();
+  const { data: courses = [] } = useGetCourses();
   const { data: results = [] } = useGetResults();
   const { data: unpaidFees = [] } = useCheckUnpaidFees();
-  const { data: registeredCourses = [] } = useGetRegisteredCourses();
+
+  // Loading state
+  if (profileLoading || !profileFetched) {
+    return (
+      <div className="flex min-h-[calc(100vh-4rem)]">
+        {/* Sidebar skeleton */}
+        <aside className="hidden md:flex w-64 flex-col border-r border-border bg-card p-4 gap-2">
+          <Skeleton className="h-6 w-32 mb-4" />
+          {Array.from({ length: 7 }).map((_, i) => (
+            <Skeleton key={i} className="h-9 w-full rounded-md" />
+          ))}
+        </aside>
+        <div className="flex-1 p-6 space-y-6">
+          <Skeleton className="h-8 w-64" />
+          <Skeleton className="h-4 w-48" />
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <Skeleton key={i} className="h-28 rounded-xl" />
+            ))}
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <Skeleton key={i} className="h-24 rounded-xl" />
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (profileError) {
+    return (
+      <div className="flex items-center justify-center min-h-[calc(100vh-4rem)] p-6">
+        <div className="text-center space-y-4 max-w-md">
+          <AlertCircle className="h-12 w-12 text-destructive mx-auto" />
+          <h2 className="text-xl font-semibold">Failed to load profile</h2>
+          <p className="text-muted-foreground text-sm">
+            There was an error loading your profile. Please try again.
+          </p>
+          <Button onClick={() => refetchProfile()} variant="outline">
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Retry
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!userProfile) return null;
+
+  const registeredCount = courses.length;
+  const resultsCount = results.length;
+  const unpaidCount = unpaidFees.length;
 
   return (
-    <div className="flex min-h-screen bg-background">
+    <div className="flex min-h-[calc(100vh-4rem)]">
       {/* Sidebar */}
-      <aside className="hidden md:flex flex-col w-64 border-r border-border bg-card shrink-0">
-        <div className="p-4 border-b border-border">
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Student Portal</p>
-          <p className="text-sm font-medium text-foreground mt-1 truncate">{profile?.name ?? 'Student'}</p>
-        </div>
-        <nav className="flex-1 p-3 space-y-1">
-          {studentNavItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = currentPath === item.to || currentPath.startsWith(item.to + '/');
-            return (
-              <button
-                key={item.to}
-                onClick={() => navigate({ to: item.to })}
-                className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors text-left ${
-                  isActive
-                    ? 'bg-primary text-primary-foreground font-medium'
-                    : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
-                }`}
-              >
-                <Icon className="h-4 w-4 shrink-0" />
-                {item.label}
-              </button>
-            );
-          })}
-        </nav>
-        <div className="p-4 border-t border-border">
-          <p className="text-xs text-muted-foreground">ID: {profile?.idNumber ?? '—'}</p>
-        </div>
+      <aside className="hidden md:flex w-64 flex-col border-r border-border bg-card p-4 gap-1">
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-2 mb-2">
+          Student Portal
+        </p>
+        {sidebarLinks.map((link) => {
+          const Icon = link.icon;
+          return (
+            <button
+              key={link.href}
+              onClick={() => navigate({ to: link.href })}
+              className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors text-left"
+            >
+              <Icon className="h-4 w-4 shrink-0" />
+              {link.label}
+            </button>
+          );
+        })}
       </aside>
 
-      {/* Main Content */}
-      <main className="flex-1 p-6 overflow-auto">
-        <div className="max-w-4xl mx-auto space-y-6">
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">
-              Welcome back, {profile?.name?.split(' ')[0] ?? 'Student'}!
-            </h1>
-            <p className="text-muted-foreground">Here's an overview of your academic status.</p>
-          </div>
-
-          {/* Quick Stats */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-3">
-                  <BookOpen className="h-8 w-8 text-primary" />
-                  <div>
-                    <p className="text-2xl font-bold">{registeredCourses.length}</p>
-                    <p className="text-sm text-muted-foreground">Registered Courses</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-3">
-                  <Award className="h-8 w-8 text-green-600" />
-                  <div>
-                    <p className="text-2xl font-bold">{results.length}</p>
-                    <p className="text-sm text-muted-foreground">Results Available</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-3">
-                  <CreditCard className="h-8 w-8 text-red-500" />
-                  <div>
-                    <p className="text-2xl font-bold">{unpaidFees.length}</p>
-                    <p className="text-sm text-muted-foreground">Unpaid Fees</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Services Grid */}
-          <div>
-            <h2 className="text-lg font-semibold mb-3">My Services</h2>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {studentNavItems.slice(1).map((item) => {
-                const Icon = item.icon;
-                return (
-                  <Card
-                    key={item.to}
-                    className="cursor-pointer hover:border-primary transition-colors"
-                    onClick={() => navigate({ to: item.to })}
-                  >
-                    <CardContent className="pt-4 pb-4 flex flex-col items-center gap-2 text-center">
-                      <Icon className="h-6 w-6 text-primary" />
-                      <p className="text-xs font-medium leading-tight">{item.label}</p>
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Unpaid fees alert */}
-          {unpaidFees.length > 0 && (
-            <Card className="border-red-200 bg-red-50 dark:bg-red-950/20 dark:border-red-800">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base text-red-700 dark:text-red-400 flex items-center gap-2">
-                  <CreditCard className="h-4 w-4" />
-                  Outstanding Fees
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground mb-3">
-                  You have {unpaidFees.length} unpaid fee(s). Please clear your fees to avoid restrictions.
-                </p>
-                <Button size="sm" asChild>
-                  <Link to="/student/fees">View Fee Statement</Link>
-                </Button>
-              </CardContent>
-            </Card>
-          )}
+      {/* Main content */}
+      <div className="flex-1 p-6 space-y-6 overflow-auto">
+        {/* Header */}
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">
+            Welcome back, {userProfile.name.split(' ')[0]}!
+          </h1>
+          <p className="text-muted-foreground text-sm mt-1">
+            Student ID: {userProfile.idNumber} · {userProfile.email}
+          </p>
         </div>
-      </main>
+
+        {/* Unpaid fees alert */}
+        {unpaidCount > 0 && (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Outstanding Fees</AlertTitle>
+            <AlertDescription className="flex items-center justify-between">
+              <span>You have {unpaidCount} unpaid fee(s). Please clear them promptly.</span>
+              <Button
+                size="sm"
+                variant="outline"
+                className="ml-4 shrink-0"
+                onClick={() => navigate({ to: '/student/fees' })}
+              >
+                Pay Now
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* Stats */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Registered Courses</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-primary">{registeredCount}</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Results Available</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-primary">{resultsCount}</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Unpaid Fees</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className={`text-3xl font-bold ${unpaidCount > 0 ? 'text-destructive' : 'text-primary'}`}>
+                {unpaidCount}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Services grid */}
+        <div>
+          <h2 className="text-lg font-semibold mb-3">Quick Access</h2>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+            {serviceCards.map((card) => {
+              const Icon = card.icon;
+              return (
+                <button
+                  key={card.href}
+                  onClick={() => navigate({ to: card.href })}
+                  className="group flex flex-col items-start gap-2 p-4 rounded-xl border border-border bg-card hover:bg-accent hover:border-primary/30 transition-all text-left"
+                >
+                  <div className="p-2 rounded-lg bg-primary/10 group-hover:bg-primary/20 transition-colors">
+                    <Icon className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-sm">{card.label}</p>
+                    <p className="text-xs text-muted-foreground">{card.desc}</p>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground self-end mt-auto group-hover:text-primary transition-colors" />
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

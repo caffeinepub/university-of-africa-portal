@@ -1,224 +1,190 @@
 import React, { useState } from 'react';
-import { Link } from '@tanstack/react-router';
-import RoleGuard from '../../components/auth/RoleGuard';
-import { UserRole, Variant_pending_approved_rejected } from '../../backend';
-import { useGetAllHostelApplications, useUpdateHostelApplicationStatus } from '../../hooks/useQueries';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ChevronLeft, Home, Search, CheckCircle, XCircle, Loader2 } from 'lucide-react';
+import {
+  useGetAllHostelApplications,
+  useUpdateHostelApplicationStatus,
+  isAuthorizationError,
+  ADMIN_AUTH_ERROR_MSG,
+  extractErrorMessage,
+} from '../../hooks/useQueries';
+import { Button } from '../../components/ui/button';
+import { Input } from '../../components/ui/input';
+import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
+import { Badge } from '../../components/ui/badge';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '../../components/ui/table';
+import { Alert, AlertDescription, AlertTitle } from '../../components/ui/alert';
+import { Variant_pending_approved_rejected } from '../../backend';
 import { toast } from 'sonner';
+import { Home, Loader2, Search, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
 
-function HostelManagementContent() {
-  const { data: applications, isLoading } = useGetAllHostelApplications();
+export default function HostelManagementPage() {
+  const { data: applications = [], isLoading } = useGetAllHostelApplications();
   const updateStatus = useUpdateHostelApplicationStatus();
-  const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [updatingId, setUpdatingId] = useState<string | null>(null);
 
-  const filtered = (applications || []).filter((app) => {
+  const [search, setSearch] = useState('');
+  const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
+  const [authError, setAuthError] = useState<string | null>(null);
+
+  const filtered = applications.filter((app) => {
     const matchesSearch =
       app.studentId.toLowerCase().includes(search.toLowerCase()) ||
-      app.roomType.toLowerCase().includes(search.toLowerCase()) ||
-      app.session.toLowerCase().includes(search.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || app.status === statusFilter;
-    return matchesSearch && matchesStatus;
+      app.roomType.toLowerCase().includes(search.toLowerCase());
+    const matchesFilter = filter === 'all' || app.status === filter;
+    return matchesSearch && matchesFilter;
   });
 
-  const handleUpdate = async (
+  const handleUpdateStatus = async (
     appId: bigint,
     status: Variant_pending_approved_rejected
   ) => {
-    setUpdatingId(appId.toString());
+    setAuthError(null);
     try {
       await updateStatus.mutateAsync({ appId, status });
       toast.success(`Application ${status} successfully!`);
-    } catch {
-      toast.error('Failed to update status. Please try again.');
-    } finally {
-      setUpdatingId(null);
+    } catch (error: unknown) {
+      const msg = extractErrorMessage(error);
+      if (isAuthorizationError(error)) {
+        setAuthError(ADMIN_AUTH_ERROR_MSG);
+        toast.error(ADMIN_AUTH_ERROR_MSG);
+      } else {
+        toast.error(`Failed to update status: ${msg}`);
+      }
     }
   };
 
-  const statusBadge = (status: string) => {
-    if (status === 'approved')
-      return (
-        <Badge className="bg-success/10 text-success border-success/30 text-xs">Approved</Badge>
-      );
-    if (status === 'rejected')
-      return (
-        <Badge variant="destructive" className="text-xs">
-          Rejected
-        </Badge>
-      );
-    return (
-      <Badge variant="outline" className="text-xs border-gold/40 text-gold">
-        Pending
-      </Badge>
-    );
+  const statusBadge = (status: Variant_pending_approved_rejected) => {
+    if (status === Variant_pending_approved_rejected.approved)
+      return <Badge className="bg-green-100 text-green-800 border-green-200">Approved</Badge>;
+    if (status === Variant_pending_approved_rejected.rejected)
+      return <Badge variant="destructive">Rejected</Badge>;
+    return <Badge variant="outline">Pending</Badge>;
   };
 
   return (
-    <div className="min-h-screen bg-muted/30 py-8">
-      <div className="container mx-auto px-4 max-w-5xl">
-        <div className="flex items-center gap-3 mb-6">
-          <Button asChild variant="ghost" size="sm">
-            <Link to="/admin">
-              <ChevronLeft className="w-4 h-4 mr-1" /> Admin Panel
-            </Link>
-          </Button>
-        </div>
+    <div className="p-6 space-y-6">
+      <div className="flex items-center gap-3">
+        <Home className="h-7 w-7 text-primary" />
+        <h1 className="text-2xl font-bold">Hostel Management</h1>
+      </div>
 
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="font-serif text-2xl font-bold text-navy">Hostel Management</h1>
-            <p className="text-muted-foreground text-sm">
-              {(applications || []).length} total hostel applications
+      {authError && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Authorization Error</AlertTitle>
+          <AlertDescription>
+            {authError}
+            <button className="ml-2 underline font-medium" onClick={() => setAuthError(null)}>
+              Dismiss
+            </button>
+          </AlertDescription>
+        </Alert>
+      )}
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Hostel Applications</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search by student ID or room type..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+            <div className="flex gap-2">
+              {(['all', 'pending', 'approved', 'rejected'] as const).map((f) => (
+                <Button
+                  key={f}
+                  variant={filter === f ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setFilter(f)}
+                  className="capitalize"
+                >
+                  {f}
+                </Button>
+              ))}
+            </div>
+          </div>
+
+          {isLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : filtered.length === 0 ? (
+            <p className="text-center text-muted-foreground py-8">
+              {search || filter !== 'all' ? 'No applications match your filters.' : 'No hostel applications yet.'}
             </p>
-          </div>
-          <div className="flex gap-2">
-            <Badge className="bg-amber-100 text-amber-800 border-amber-200">
-              {(applications || []).filter((a) => a.status === 'pending').length} Pending
-            </Badge>
-            <Badge className="bg-success/10 text-success border-success/30">
-              {(applications || []).filter((a) => a.status === 'approved').length} Approved
-            </Badge>
-          </div>
-        </div>
-
-        <div className="flex gap-3 mb-6">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search by student ID, room type, or session..."
-              className="pl-9"
-            />
-          </div>
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-36">
-              <SelectValue placeholder="Filter status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Status</SelectItem>
-              <SelectItem value="pending">Pending</SelectItem>
-              <SelectItem value="approved">Approved</SelectItem>
-              <SelectItem value="rejected">Rejected</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="font-serif text-navy flex items-center gap-2">
-              <Home className="w-5 h-5 text-gold" />
-              Hostel Applications ({filtered.length})
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <div className="space-y-3">
-                {Array(5)
-                  .fill(0)
-                  .map((_, i) => (
-                    <Skeleton key={i} className="h-20 rounded-lg" />
-                  ))}
-              </div>
-            ) : filtered.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <Home className="w-10 h-10 mx-auto mb-3 opacity-40" />
-                <p>No hostel applications found.</p>
-              </div>
-            ) : (
-              <div className="space-y-3">
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Student ID</TableHead>
+                  <TableHead>Room Type</TableHead>
+                  <TableHead>Session</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {filtered.map((app) => (
-                  <div
-                    key={app.id.toString()}
-                    className="p-4 rounded-lg border border-border hover:bg-muted/30"
-                  >
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="font-semibold text-navy">
-                            Student: {app.studentId}
-                          </span>
-                          {statusBadge(app.status)}
-                        </div>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs text-muted-foreground">
-                          <span>
-                            Room Type:{' '}
-                            <span className="font-semibold text-navy capitalize">
-                              {app.roomType}
-                            </span>
-                          </span>
-                          <span>
-                            Session:{' '}
-                            <span className="font-semibold text-navy">{app.session}</span>
-                          </span>
-                          <span>
-                            App ID:{' '}
-                            <span className="font-semibold text-navy">#{app.id.toString()}</span>
-                          </span>
-                        </div>
-                      </div>
-                      {app.status === 'pending' && (
-                        <div className="flex gap-2 flex-shrink-0">
+                  <TableRow key={String(app.id)}>
+                    <TableCell className="font-mono text-sm">{app.studentId}</TableCell>
+                    <TableCell>{app.roomType}</TableCell>
+                    <TableCell>{app.session}</TableCell>
+                    <TableCell>{statusBadge(app.status)}</TableCell>
+                    <TableCell className="text-right">
+                      {app.status === Variant_pending_approved_rejected.pending && (
+                        <div className="flex justify-end gap-2">
                           <Button
                             size="sm"
-                            onClick={() =>
-                              handleUpdate(app.id, Variant_pending_approved_rejected.approved)
-                            }
-                            disabled={updatingId === app.id.toString()}
                             variant="outline"
-                            className="bg-success/10 text-success border border-success/30 hover:bg-success/20"
+                            className="text-green-700 border-green-300 hover:bg-green-50"
+                            disabled={updateStatus.isPending}
+                            onClick={() =>
+                              handleUpdateStatus(
+                                app.id,
+                                Variant_pending_approved_rejected.approved
+                              )
+                            }
                           >
-                            {updatingId === app.id.toString() ? (
-                              <Loader2 className="w-3 h-3 animate-spin" />
-                            ) : (
-                              <>
-                                <CheckCircle className="w-3 h-3 mr-1" /> Approve
-                              </>
-                            )}
+                            <CheckCircle className="h-4 w-4 mr-1" />
+                            Approve
                           </Button>
                           <Button
                             size="sm"
-                            onClick={() =>
-                              handleUpdate(app.id, Variant_pending_approved_rejected.rejected)
-                            }
-                            disabled={updatingId === app.id.toString()}
                             variant="outline"
-                            className="text-destructive border-destructive/30 hover:bg-destructive/10"
+                            className="text-red-700 border-red-300 hover:bg-red-50"
+                            disabled={updateStatus.isPending}
+                            onClick={() =>
+                              handleUpdateStatus(
+                                app.id,
+                                Variant_pending_approved_rejected.rejected
+                              )
+                            }
                           >
-                            {updatingId === app.id.toString() ? (
-                              <Loader2 className="w-3 h-3 animate-spin" />
-                            ) : (
-                              <>
-                                <XCircle className="w-3 h-3 mr-1" /> Reject
-                              </>
-                            )}
+                            <XCircle className="h-4 w-4 mr-1" />
+                            Reject
                           </Button>
                         </div>
                       )}
-                    </div>
-                  </div>
+                    </TableCell>
+                  </TableRow>
                 ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
     </div>
-  );
-}
-
-export default function HostelManagementPage() {
-  return (
-    <RoleGuard requiredRole={UserRole.admin}>
-      <HostelManagementContent />
-    </RoleGuard>
   );
 }

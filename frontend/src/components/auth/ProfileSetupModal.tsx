@@ -1,133 +1,143 @@
 import React, { useState } from 'react';
 import { useInternetIdentity } from '../../hooks/useInternetIdentity';
 import { useSaveCallerUserProfile } from '../../hooks/useQueries';
-import { UserRole } from '../../backend';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { UserRole, UserProfile } from '../../backend';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '../ui/dialog';
+import { Button } from '../ui/button';
+import { Input } from '../ui/input';
+import { Label } from '../ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '../ui/select';
 import { toast } from 'sonner';
-import { GraduationCap, Users, Briefcase, Heart } from 'lucide-react';
 
-const ROLES = [
-  { value: UserRole.student, label: 'Student', icon: GraduationCap, desc: 'Access courses, results, and fees' },
-  { value: UserRole.staff, label: 'Staff', icon: Briefcase, desc: 'View assigned courses and students' },
-  { value: UserRole.parent, label: 'Parent', icon: Heart, desc: 'Track your child\'s progress' },
-  { value: UserRole.admin, label: 'Admin', icon: Users, desc: 'Manage the university portal' },
-];
+interface ProfileSetupModalProps {
+  open: boolean;
+}
 
-export default function ProfileSetupModal() {
+export default function ProfileSetupModal({ open }: ProfileSetupModalProps) {
   const { identity } = useInternetIdentity();
   const saveProfile = useSaveCallerUserProfile();
 
   const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
+  const [role, setRole] = useState<UserRole>(UserRole.student);
   const [idNumber, setIdNumber] = useState('');
-  const [role, setRole] = useState<UserRole | null>(null);
+  const [email, setEmail] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!role || !name.trim() || !identity) return;
+    if (!identity) return;
+
+    if (!name.trim() || !idNumber.trim() || !email.trim()) {
+      toast.error('Please fill in all fields');
+      return;
+    }
+
+    const profile: UserProfile = {
+      principal: identity.getPrincipal(),
+      name: name.trim(),
+      role,
+      idNumber: idNumber.trim(),
+      email: email.trim(),
+    };
 
     try {
-      await saveProfile.mutateAsync({
-        principal: identity.getPrincipal(),
-        name: name.trim(),
-        email: email.trim(),
-        idNumber: idNumber.trim(),
-        role,
-      });
+      await saveProfile.mutateAsync(profile);
       toast.success('Profile created successfully! Welcome to the portal.');
-    } catch (err) {
+    } catch (error: unknown) {
+      console.error('Profile setup error:', error);
       toast.error('Failed to create profile. Please try again.');
     }
   };
 
-  const idLabel = role === UserRole.student ? 'Student ID / Matric Number'
-    : role === UserRole.staff ? 'Staff ID'
-    : role === UserRole.parent ? 'Parent ID / NIN'
-    : 'Admin ID';
-
   return (
-    <Dialog open={true}>
-      <DialogContent className="sm:max-w-lg" onInteractOutside={(e) => e.preventDefault()}>
+    <Dialog open={open}>
+      <DialogContent className="sm:max-w-md" onInteractOutside={(e) => e.preventDefault()}>
         <DialogHeader>
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-gold">
-              <img src="/assets/generated/university-crest.dim_256x256.png" alt="Crest" className="w-full h-full object-cover" />
-            </div>
-            <div>
-              <DialogTitle className="font-serif text-navy text-xl">Welcome to the Portal</DialogTitle>
-              <DialogDescription>Complete your profile to get started</DialogDescription>
-            </div>
-          </div>
+          <DialogTitle>Complete Your Profile</DialogTitle>
+          <DialogDescription>
+            Please provide your details to set up your account on the university portal.
+          </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-5">
-          {/* Role Selection */}
-          <div>
-            <Label className="text-sm font-semibold text-foreground mb-3 block">I am a...</Label>
-            <div className="grid grid-cols-2 gap-2">
-              {ROLES.map(({ value, label, icon: Icon, desc }) => (
-                <button
-                  key={value}
-                  type="button"
-                  onClick={() => setRole(value)}
-                  className={`p-3 rounded-lg border-2 text-left transition-all ${
-                    role === value
-                      ? 'border-gold bg-gold/10 text-navy'
-                      : 'border-border hover:border-gold/50 hover:bg-muted'
-                  }`}
-                >
-                  <Icon className={`w-5 h-5 mb-1 ${role === value ? 'text-gold' : 'text-muted-foreground'}`} />
-                  <div className="font-semibold text-sm">{label}</div>
-                  <div className="text-xs text-muted-foreground">{desc}</div>
-                </button>
-              ))}
-            </div>
+        <form onSubmit={handleSubmit} className="space-y-4 mt-2">
+          <div className="space-y-1.5">
+            <Label htmlFor="name">Full Name</Label>
+            <Input
+              id="name"
+              placeholder="Enter your full name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+            />
           </div>
 
-          <div className="grid grid-cols-1 gap-4">
-            <div>
-              <Label htmlFor="name">Full Name *</Label>
-              <Input
-                id="name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Enter your full name"
-                required
-                className="mt-1"
-              />
-            </div>
-            <div>
-              <Label htmlFor="email">Email Address</Label>
-              <Input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="your@email.com"
-                className="mt-1"
-              />
-            </div>
-            <div>
-              <Label htmlFor="idNumber">{idLabel}</Label>
-              <Input
-                id="idNumber"
-                value={idNumber}
-                onChange={(e) => setIdNumber(e.target.value)}
-                placeholder={role === UserRole.student ? 'e.g. UAT/2024/001' : 'Enter your ID'}
-                className="mt-1"
-              />
-            </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="role">Role</Label>
+            <Select value={role} onValueChange={(v) => setRole(v as UserRole)}>
+              <SelectTrigger id="role">
+                <SelectValue placeholder="Select your role" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={UserRole.student}>Student</SelectItem>
+                <SelectItem value={UserRole.staff}>Staff</SelectItem>
+                <SelectItem value={UserRole.admin}>Admin</SelectItem>
+                <SelectItem value={UserRole.parent}>Parent</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="idNumber">
+              {role === UserRole.student
+                ? 'Matriculation Number'
+                : role === UserRole.staff || role === UserRole.admin
+                ? 'Staff ID'
+                : 'ID Number'}
+            </Label>
+            <Input
+              id="idNumber"
+              placeholder={
+                role === UserRole.student
+                  ? 'e.g. MAT/2021/001'
+                  : role === UserRole.staff || role === UserRole.admin
+                  ? 'e.g. STAFF/001'
+                  : 'e.g. PARENT/001'
+              }
+              value={idNumber}
+              onChange={(e) => setIdNumber(e.target.value)}
+              required
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="email">Email Address</Label>
+            <Input
+              id="email"
+              type="email"
+              placeholder="Enter your email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
           </div>
 
           <Button
             type="submit"
-            disabled={!role || !name.trim() || saveProfile.isPending}
-            className="w-full bg-navy text-white hover:bg-navy/90 font-semibold"
+            className="w-full"
+            disabled={saveProfile.isPending}
           >
-            {saveProfile.isPending ? 'Creating Profile...' : 'Complete Setup'}
+            {saveProfile.isPending ? 'Setting up...' : 'Complete Setup'}
           </Button>
         </form>
       </DialogContent>

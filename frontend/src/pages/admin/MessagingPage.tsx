@@ -1,189 +1,197 @@
 import React, { useState } from 'react';
-import { Link } from '@tanstack/react-router';
-import RoleGuard from '../../components/auth/RoleGuard';
-import { UserRole } from '../../backend';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Badge } from '@/components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ChevronLeft, MessageSquare, Send, Bell } from 'lucide-react';
+import { useSendAnnouncement, isAuthorizationError, ADMIN_AUTH_ERROR_MSG, extractErrorMessage } from '../../hooks/useQueries';
+import { Button } from '../../components/ui/button';
+import { Input } from '../../components/ui/input';
+import { Label } from '../../components/ui/label';
+import { Textarea } from '../../components/ui/textarea';
+import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '../../components/ui/select';
+import { Alert, AlertDescription, AlertTitle } from '../../components/ui/alert';
+import { Badge } from '../../components/ui/badge';
 import { toast } from 'sonner';
+import { MessageSquare, Send, Loader2, AlertCircle } from 'lucide-react';
 
-interface Message {
+interface SentMessage {
   id: number;
   title: string;
   content: string;
   targetRole: string;
-  date: string;
+  sentAt: Date;
 }
 
-function MessagingContent() {
+export default function MessagingPage() {
+  const sendAnnouncement = useSendAnnouncement();
+
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [targetRole, setTargetRole] = useState('all');
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [isSending, setIsSending] = useState(false);
+  const [sentMessages, setSentMessages] = useState<SentMessage[]>([]);
+  const [authError, setAuthError] = useState<string | null>(null);
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim() || !content.trim()) return;
-    setIsSending(true);
-    // Store locally since backend messaging is not yet implemented
-    await new Promise((r) => setTimeout(r, 500));
-    const newMessage: Message = {
-      id: Date.now(),
-      title: title.trim(),
-      content: content.trim(),
-      targetRole,
-      date: new Date().toLocaleDateString('en-NG', { dateStyle: 'medium' }),
-    };
-    setMessages((prev) => [newMessage, ...prev]);
-    toast.success('Announcement sent successfully!');
-    setTitle('');
-    setContent('');
-    setTargetRole('all');
-    setIsSending(false);
+    setAuthError(null);
+
+    if (!title.trim() || !content.trim()) {
+      toast.error('Please fill in the title and message content');
+      return;
+    }
+
+    const fullContent = `${title.trim()}\n\n${content.trim()}`;
+
+    try {
+      await sendAnnouncement.mutateAsync({
+        content: fullContent,
+        targetRole,
+      });
+
+      setSentMessages((prev) => [
+        {
+          id: Date.now(),
+          title: title.trim(),
+          content: content.trim(),
+          targetRole,
+          sentAt: new Date(),
+        },
+        ...prev,
+      ]);
+
+      toast.success('Announcement sent successfully!');
+      setTitle('');
+      setContent('');
+      setTargetRole('all');
+    } catch (error: unknown) {
+      const msg = extractErrorMessage(error);
+      if (isAuthorizationError(error)) {
+        setAuthError(ADMIN_AUTH_ERROR_MSG);
+        toast.error(ADMIN_AUTH_ERROR_MSG);
+      } else {
+        toast.error(`Failed to send announcement: ${msg}`);
+      }
+    }
   };
 
   const roleLabel = (role: string) => {
     const map: Record<string, string> = {
-      all: 'All Users',
+      all: 'Everyone',
       student: 'Students',
       staff: 'Staff',
       parent: 'Parents',
+      admin: 'Admins',
     };
-    return map[role] || role;
+    return map[role] ?? role;
   };
 
   return (
-    <div className="min-h-screen bg-muted/30 py-8">
-      <div className="container mx-auto px-4 max-w-4xl">
-        <div className="flex items-center gap-3 mb-6">
-          <Button asChild variant="ghost" size="sm">
-            <Link to="/admin">
-              <ChevronLeft className="w-4 h-4 mr-1" /> Admin Panel
-            </Link>
-          </Button>
-        </div>
-
-        <div className="mb-6">
-          <h1 className="font-serif text-2xl font-bold text-navy">Messaging & Announcements</h1>
-          <p className="text-muted-foreground text-sm">
-            Send broadcast announcements to users
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Compose */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="font-serif text-navy flex items-center gap-2">
-                <Send className="w-5 h-5 text-gold" />
-                Compose Announcement
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleSend} className="space-y-4">
-                <div>
-                  <Label htmlFor="title">Title *</Label>
-                  <Input
-                    id="title"
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    placeholder="Announcement title"
-                    className="mt-1"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="content">Message *</Label>
-                  <Textarea
-                    id="content"
-                    value={content}
-                    onChange={(e) => setContent(e.target.value)}
-                    placeholder="Write your announcement here..."
-                    rows={5}
-                    className="mt-1"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="target">Target Audience</Label>
-                  <Select value={targetRole} onValueChange={setTargetRole}>
-                    <SelectTrigger className="mt-1">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Users</SelectItem>
-                      <SelectItem value="student">Students Only</SelectItem>
-                      <SelectItem value="staff">Staff Only</SelectItem>
-                      <SelectItem value="parent">Parents Only</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <Button
-                  type="submit"
-                  disabled={!title.trim() || !content.trim() || isSending}
-                  className="w-full bg-navy text-white hover:bg-navy/90"
-                >
-                  {isSending ? (
-                    'Sending...'
-                  ) : (
-                    <>
-                      <Send className="w-4 h-4 mr-2" /> Send Announcement
-                    </>
-                  )}
-                </Button>
-              </form>
-            </CardContent>
-          </Card>
-
-          {/* Sent Messages */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="font-serif text-navy flex items-center gap-2">
-                <Bell className="w-5 h-5 text-gold" />
-                Sent Announcements
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {messages.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  <MessageSquare className="w-10 h-10 mx-auto mb-3 opacity-40" />
-                  <p>No announcements sent yet.</p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {messages.map((msg) => (
-                    <div
-                      key={msg.id}
-                      className="p-3 rounded-lg border border-border bg-muted/20"
-                    >
-                      <div className="flex items-start justify-between gap-2 mb-1">
-                        <span className="font-semibold text-navy text-sm">{msg.title}</span>
-                        <Badge variant="secondary" className="text-xs flex-shrink-0">
-                          {roleLabel(msg.targetRole)}
-                        </Badge>
-                      </div>
-                      <p className="text-xs text-muted-foreground line-clamp-2">{msg.content}</p>
-                      <p className="text-xs text-muted-foreground mt-1">{msg.date}</p>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+    <div className="p-6 space-y-6">
+      <div className="flex items-center gap-3">
+        <MessageSquare className="h-7 w-7 text-primary" />
+        <h1 className="text-2xl font-bold">Messaging & Announcements</h1>
       </div>
-    </div>
-  );
-}
 
-export default function MessagingPage() {
-  return (
-    <RoleGuard requiredRole={UserRole.admin}>
-      <MessagingContent />
-    </RoleGuard>
+      {authError && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Authorization Error</AlertTitle>
+          <AlertDescription>
+            {authError}
+            <button className="ml-2 underline font-medium" onClick={() => setAuthError(null)}>
+              Dismiss
+            </button>
+          </AlertDescription>
+        </Alert>
+      )}
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Send className="h-5 w-5" />
+            Compose Announcement
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSend} className="space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="msgTitle">Title</Label>
+              <Input
+                id="msgTitle"
+                placeholder="e.g. Important Notice: Exam Timetable"
+                value={title}
+                onChange={(e) => { setTitle(e.target.value); setAuthError(null); }}
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="msgContent">Message</Label>
+              <Textarea
+                id="msgContent"
+                placeholder="Type your announcement here..."
+                rows={5}
+                value={content}
+                onChange={(e) => { setContent(e.target.value); setAuthError(null); }}
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Target Audience</Label>
+              <Select value={targetRole} onValueChange={(v) => { setTargetRole(v); setAuthError(null); }}>
+                <SelectTrigger className="w-full md:w-64">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Everyone</SelectItem>
+                  <SelectItem value="student">Students</SelectItem>
+                  <SelectItem value="staff">Staff</SelectItem>
+                  <SelectItem value="parent">Parents</SelectItem>
+                  <SelectItem value="admin">Admins</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <Button type="submit" disabled={sendAnnouncement.isPending}>
+              {sendAnnouncement.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Sending...
+                </>
+              ) : (
+                <>
+                  <Send className="mr-2 h-4 w-4" />
+                  Send Announcement
+                </>
+              )}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+
+      {sentMessages.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Sent Announcements (This Session)</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {sentMessages.map((msg) => (
+              <div key={msg.id} className="border rounded-lg p-4 space-y-1">
+                <div className="flex items-center justify-between">
+                  <p className="font-semibold">{msg.title}</p>
+                  <Badge variant="secondary">{roleLabel(msg.targetRole)}</Badge>
+                </div>
+                <p className="text-sm text-muted-foreground line-clamp-2">{msg.content}</p>
+                <p className="text-xs text-muted-foreground">
+                  {msg.sentAt.toLocaleString()}
+                </p>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+    </div>
   );
 }

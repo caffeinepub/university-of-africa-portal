@@ -1,118 +1,51 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Fix Admin Data Entry (Students, Fees, Courses), Nigerian Currency Formatting, and Role-Based Service Menu",
+  "title": "Fix 'Unauthorized — admin only' error for authenticated admin users",
   "requirements": [
     {
-      "id": "REQ-15",
-      "summary": "Fix admin panel data entry so adding students, fees, and courses persists to the backend and refreshes lists immediately without page reload",
+      "id": "REQ-25",
+      "summary": "Surface clear, human-readable error messages in Admin Panel pages when backend mutations return authorization errors, so admins know immediately if they need to re-authenticate rather than seeing raw error strings.",
       "acceptanceCriteria": [
-        "Admin can add a fee item (name, amount, programme, session) and it appears in the fee list immediately after submission.",
-        "Admin can add a course (code, name, semester, programme) and it immediately appears in course lists across ProgrammeManagementPage, CourseRegistrationPage, and ResultsManagementPage.",
-        "Admin can create/register a new student profile from the admin panel and the student appears in the student list immediately.",
-        "All added data persists across page reloads (confirmed by refreshing and checking the lists).",
-        "Form fields are cleared and a success toast/message is shown after each successful submission.",
-        "Error messages are shown if the backend call fails."
+        "When any admin mutation fails with an authorization-related error, a visible toast or error banner is shown with text like 'Action failed: you must be logged in as an Admin. Please re-authenticate and try again.'",
+        "The error state is cleared when the user retries or navigates away.",
+        "Successful mutations show a success confirmation as before."
       ],
       "file_operations": [
         {
-          "path": "frontend/src/hooks/useQueries.ts",
-          "operation": "modify",
-          "description": "Add React Query mutations for adding students (useAddStudent), fees (useAddFeeType), and courses (useAddCourse). Each mutation should call the corresponding backend method (addStudentProfile, addFeeType, addCourse), invalidate the relevant query cache on success (getAllStudents, getFeeTypes, getCourses), and handle errors appropriately. Ensure the existing useAddCourse hook properly invalidates the 'courses' query key."
-        },
-        {
           "path": "frontend/src/pages/admin/FeeManagementPage.tsx",
           "operation": "modify",
-          "description": "Wire the fee form submission to the useAddFeeType mutation hook. On successful submission, clear all form fields (name, amount, programme, session), display a success toast notification, and the fee list will automatically refresh via React Query cache invalidation. Add error handling to display toast notifications if the backend call fails. Ensure the amount field converts to bigint before submitting."
+          "description": "Add error handling to the addFeeType mutation that detects authorization-related errors (e.g., error messages containing 'Unauthorized' or 'admin only') and displays a clear, human-readable toast notification prompting the admin to re-authenticate. Ensure successful fee creation still shows a success toast and the error state is cleared on retry or navigation."
         },
         {
           "path": "frontend/src/pages/admin/ProgrammeManagementPage.tsx",
           "operation": "modify",
-          "description": "Wire the course form submission to the useAddCourse mutation hook from useQueries. On successful submission, clear all form fields (code, name, semester, programme), display a success toast notification, and the course list will automatically refresh via React Query cache invalidation. Add error handling to display toast notifications if the backend call fails."
+          "description": "Add error handling to the addCourse mutation that detects authorization-related errors and displays a clear toast notification with text like 'Action failed: you must be logged in as an Admin. Please re-authenticate and try again.' Ensure successful course creation still shows a success toast and the error state is cleared appropriately."
         },
         {
           "path": "frontend/src/pages/admin/StudentManagementPage.tsx",
           "operation": "modify",
-          "description": "Add a student registration form section above the student list table with input fields for name, ID number, and email. Wire the form submission to the new useAddStudent mutation hook. On successful submission, clear the form fields, display a success toast notification, and the student list will automatically refresh via React Query cache invalidation. Add error handling to display toast notifications if the backend call fails. The form should call the backend's addStudentProfile method."
-        }
-      ]
-    },
-    {
-      "id": "REQ-16",
-      "summary": "Add Nigerian Naira (₦) currency formatting with thousand separators to all fee-related amount fields and displays",
-      "acceptanceCriteria": [
-        "All fee amounts display with the ₦ symbol and comma thousand separators (e.g., ₦150,000.00).",
-        "The fee amount input field in FeeManagementPage shows a ₦ prefix and formats the displayed value.",
-        "FeeStatementPage outstanding and paid totals are formatted as Nigerian Naira.",
-        "PaymentHistoryPage amount column shows ₦-formatted values.",
-        "ReceiptPage total amount is formatted as Nigerian Naira.",
-        "Formatting is consistent across all fee-related pages."
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/src/utils/currency.ts",
-          "operation": "create",
-          "description": "Create a utility module that exports a formatNaira function accepting a number or bigint amount (in kobo/cents) and returning a formatted string using Intl.NumberFormat with locale 'en-NG', style 'currency', and currency 'NGN'. The function should convert bigint to number, divide by 100 to get Naira from kobo, and return formatted output like ₦150,000.00. Export this as the default currency formatter for the application."
+          "description": "Add error handling to the addStudentProfile mutation that detects authorization-related errors and displays a human-readable toast notification. Ensure the error is cleared when the user retries or navigates away, and successful student registration still shows a success confirmation."
         },
         {
-          "path": "frontend/src/pages/admin/FeeManagementPage.tsx",
+          "path": "frontend/src/pages/admin/ResultsManagementPage.tsx",
           "operation": "modify",
-          "description": "Import formatNaira from utils/currency. Apply formatNaira to all displayed fee amounts in the fee list table. For the amount input field, add a ₦ prefix label or icon and optionally format the displayed value as the user types (while keeping the underlying state as a number). Ensure submission still converts the raw number to bigint kobo before calling the backend."
+          "description": "Add error handling to the addResult mutation that detects authorization-related errors and displays a clear toast notification prompting re-authentication. Ensure successful result posting still shows a success toast and the error state is cleared on retry or navigation."
         },
         {
-          "path": "frontend/src/pages/student/FeeStatementPage.tsx",
+          "path": "frontend/src/pages/admin/MessagingPage.tsx",
           "operation": "modify",
-          "description": "Import formatNaira from utils/currency. Apply formatNaira to the outstanding total, paid total, and all individual fee amounts displayed in the fee statement cards and tables. Ensure all bigint amounts are properly converted and formatted."
+          "description": "Add error handling to the sendAnnouncement mutation that detects authorization-related errors and displays a human-readable toast notification. Ensure successful announcements still show a success confirmation and the error state is cleared appropriately."
         },
         {
-          "path": "frontend/src/pages/student/PaymentHistoryPage.tsx",
+          "path": "frontend/src/pages/admin/HostelManagementPage.tsx",
           "operation": "modify",
-          "description": "Import formatNaira from utils/currency. Apply formatNaira to the total paid amount summary and to each payment amount in the payment history table's amount column. Ensure all bigint values are converted and formatted consistently."
+          "description": "Add error handling to the updateHostelApplicationStatus mutation that detects authorization-related errors and displays a clear toast notification with re-authentication guidance. Ensure successful hostel approvals/rejections still show success confirmations and the error state is cleared on retry or navigation."
         },
         {
-          "path": "frontend/src/pages/student/ReceiptPage.tsx",
+          "path": "frontend/src/pages/admin/AdmissionsManagementPage.tsx",
           "operation": "modify",
-          "description": "Import formatNaira from utils/currency. Apply formatNaira to the payment amount displayed on the receipt. Ensure the formatted value appears in the official receipt layout with the ₦ symbol and thousand separators."
-        }
-      ]
-    },
-    {
-      "id": "REQ-17",
-      "summary": "Display a contextual role-based service menu in the navigation sidebar/dropdown showing all available features for each role after login",
-      "acceptanceCriteria": [
-        "A logged-in student sees all student-applicable service links in their dashboard sidebar or navigation menu.",
-        "A logged-in staff member sees all staff-applicable service links in their dashboard sidebar or navigation menu.",
-        "A logged-in parent sees all parent-applicable service links in their dashboard sidebar or navigation menu.",
-        "A logged-in admin sees all admin-applicable service links in their dashboard sidebar or navigation menu.",
-        "Clicking each service link navigates to the correct page.",
-        "The service menu is not visible to unauthenticated users.",
-        "Each role only sees services relevant to their role (no cross-role leakage)."
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/src/components/layout/Navigation.tsx",
-          "operation": "modify",
-          "description": "Expand the role-based dashboard dropdown menu to include a comprehensive list of service links for each role. For Students: add links to Course Registration, Fee Statement, Results, Transcript, Hostel Application, Payment History, and Announcements. For Staff: add links to My Profile, Assigned Courses, Enrolled Students, Announcements, and Exams & Records Portal. For Parents: add links to Linked Student Overview, Student Results, Fee Status, and Course Registrations. For Admins: add links to Manage Students, Manage Staff, Manage Courses/Programmes, Manage Fees, Admissions, Results Management, Hostel Applications, Messaging/Announcements, and Exams & Records Portal. Organize the dropdown with section headers or dividers for clarity. Ensure the menu only appears when a user is authenticated and has a profile with a known role."
-        },
-        {
-          "path": "frontend/src/pages/student/StudentDashboard.tsx",
-          "operation": "modify",
-          "description": "Add a sidebar or left-hand navigation panel to the StudentDashboard that lists all student-applicable services as navigation links: Course Registration, Fee Statement, Results, Transcript, Hostel Application, Payment History, and Announcements. Style the sidebar consistently with the dashboard layout and highlight the current active page. Ensure the sidebar is visible on all student pages when navigating within the student portal."
-        },
-        {
-          "path": "frontend/src/pages/staff/StaffDashboard.tsx",
-          "operation": "modify",
-          "description": "Add a sidebar or left-hand navigation panel to the StaffDashboard that lists all staff-applicable services as navigation links: My Profile, Assigned Courses, Enrolled Students, Announcements, and Exams & Records Portal. Style the sidebar consistently with the dashboard layout and highlight the current active page. Ensure the sidebar is visible on all staff pages when navigating within the staff portal."
-        },
-        {
-          "path": "frontend/src/pages/parent/ParentDashboard.tsx",
-          "operation": "modify",
-          "description": "Add a sidebar or left-hand navigation panel to the ParentDashboard that lists all parent-applicable services as navigation links: Linked Student Overview, Student Results, Fee Status, and Course Registrations. Style the sidebar consistently with the dashboard layout and highlight the current active page. Ensure the sidebar is visible on all parent pages when navigating within the parent portal."
-        },
-        {
-          "path": "frontend/src/pages/admin/AdminDashboard.tsx",
-          "operation": "modify",
-          "description": "Add a sidebar or left-hand navigation panel to the AdminDashboard that lists all admin-applicable services as navigation links: Manage Students, Manage Staff, Manage Courses/Programmes, Manage Fees, Admissions, Results Management, Hostel Applications, Messaging/Announcements, and Exams & Records Portal. Style the sidebar consistently with the dashboard layout and highlight the current active page. Ensure the sidebar is visible on all admin pages when navigating within the admin portal."
+          "description": "Add error handling to the updateAdmissionStatus mutation that detects authorization-related errors and displays a human-readable toast notification. Ensure successful admission status updates still show success confirmations and the error state is cleared appropriately."
         }
       ]
     }

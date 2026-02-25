@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "projectStateVersion": 7,
+  "projectStateVersion": 13,
   "summary": "Building a full university portal (similar to University of Africa, Toru-Orua) on the Internet Computer stack with React + Motoko + Internet Identity + Stripe. Includes role-based authentication (Admin, Student, Staff, Parent), public homepage, admissions module, student dashboard, parent portal, admin panel, hostel application, and payment integration.",
   "architectural_notes": [
     "Backend: Motoko on Internet Computer (IC) canisters",
@@ -8,11 +8,16 @@
     "Authentication: Internet Identity (passkeys/social login)",
     "Payments: Stripe integration (Paystack/Flutterwave not supported on this platform)",
     "Responsive, mobile-friendly UI with clear role-based navigation",
-    "Exams & Records is a separate portal/site for results upload, distinct from the main university portal"
+    "Exams & Records is a separate portal/site for results upload, distinct from the main university portal",
+    "Protected navigation items must be conditionally rendered based on authentication state — unauthenticated users must never see role-specific menu options",
+    "Backend admin role checks must verify the caller's principal against the stored admin profile — mismatches cause false 'Unauthorized' errors even for valid admins"
   ],
   "known_issues": [
     "Course addition is broken — users cannot add courses; needs full fix across admin panel and course registration",
-    "Adding students, fees, and courses in the admin panel is broken — data does not persist correctly"
+    "Adding students, fees, and courses in the admin panel is broken — data does not persist correctly",
+    "Role-specific sidebar/menu options are visible to unauthenticated users — they should only appear after login",
+    "Profiles are not loading after login — user profile data fails to fetch/display post-authentication for all roles",
+    "Admin gets 'Unauthorized — admin only' error when trying to add fees or perform admin actions despite being registered as admin — backend role check is not recognising the principal correctly"
   ],
   "isFixRequest": true,
   "existing_features": [
@@ -109,6 +114,46 @@
       "title": "After login, the navigation sidebar/menu for each role (Student, Staff, Parent, Admin) must display a contextual list of all services and features available to that role. For Students: Course Registration, Fee Statement, Results, Transcript, Hostel Application, Payment History, Announcements. For Staff: My Profile, Assigned Courses, Enrolled Students, Announcements, Exams & Records Portal. For Parents: Linked Student Overview, Student Results, Fee Status, Course Registrations. For Admins: Manage Students, Manage Staff, Manage Courses/Programmes, Manage Fees, Admissions, Results Management, Hostel Applications, Messaging/Announcements, Exams & Records Portal. These service links should be visible in the dashboard sidebar or the role-based dropdown menu in the Navigation component after a user is authenticated.",
       "reqIds": [
         "REQ-17"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-in-the-navigation-component-hide-all-role-specific-service-menus-student-staff-parent-admin-dropdown-sidebar-items-from-users-who-are-not-authenticated-these-menus-must-only-render-when-the-user-is-logged-in-via-internet-identity-and-has-a-confirmed-role-unauthenticated-visitors-should-only-see-public-links-home-admissions-admission-checker-portal-login-prompts",
+      "title": "In the Navigation component, hide all role-specific service menus (Student, Staff, Parent, Admin dropdown/sidebar items) from users who are not authenticated. These menus must only render when the user is logged in via Internet Identity and has a confirmed role. Unauthenticated visitors should only see public links (Home, Admissions, Admission Checker, portal login prompts).",
+      "reqIds": [
+        "REQ-18"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-wrap-all-role-specific-dashboard-routes-student-staff-parent-admin-and-their-sidebar-navigation-links-with-authentication-and-role-checks-if-an-unauthenticated-user-navigates-directly-to-any-protected-route-redirect-them-to-the-homepage-or-display-a-login-required-message-the-roleguard-component-must-be-applied-consistently-to-every-protected-page-so-that-the-protected-content-is-never-rendered-without-a-valid-authenticated-session-and-the-correct-role",
+      "title": "Wrap all role-specific dashboard routes (student/*, staff/*, parent/*, admin/*) and their sidebar navigation links with authentication and role checks. If an unauthenticated user navigates directly to any protected route, redirect them to the homepage or display a login-required message. The RoleGuard component must be applied consistently to every protected page so that the protected content is never rendered without a valid authenticated session and the correct role.",
+      "reqIds": [
+        "REQ-19"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-audit-and-fix-the-studentdashboard-staffdashboard-admindashboard-and-parentdashboard-sidebar-components-so-that-their-service-link-lists-course-registration-fee-statement-results-etc-for-students-manage-students-manage-fees-etc-for-admins-my-profile-assigned-courses-etc-for-staff-linked-student-overview-etc-for-parents-are-conditionally-rendered-only-when-the-authenticated-user-s-role-matches-if-the-user-is-unauthenticated-or-the-role-does-not-match-the-sidebar-must-not-render-the-protected-service-links",
+      "title": "Audit and fix the StudentDashboard, StaffDashboard, AdminDashboard, and ParentDashboard sidebar components so that their service link lists (Course Registration, Fee Statement, Results, etc. for students; Manage Students, Manage Fees, etc. for admins; My Profile, Assigned Courses, etc. for staff; Linked Student Overview, etc. for parents) are conditionally rendered only when the authenticated user's role matches. If the user is unauthenticated or the role does not match, the sidebar must not render the protected service links.",
+      "reqIds": [
+        "REQ-20"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-fix-the-frontend-profile-fetching-flow-so-that-after-a-successful-internet-identity-login-the-useprofile-or-equivalent-react-query-hook-re-fetches-immediately-using-the-authenticated-actor-ensure-the-actor-is-fully-initialised-before-the-profile-query-fires-the-query-key-includes-the-user-s-principal-so-it-is-not-stale-from-a-previous-session-and-any-loading-error-states-are-handled-gracefully-so-the-ui-does-not-silently-display-empty-profile-data",
+      "title": "Fix the frontend profile-fetching flow so that after a successful Internet Identity login, the useProfile (or equivalent) React Query hook re-fetches immediately using the authenticated actor. Ensure the actor is fully initialised before the profile query fires, the query key includes the user's principal so it is not stale from a previous session, and any loading/error states are handled gracefully so the UI does not silently display empty profile data.",
+      "reqIds": [
+        "REQ-22"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-in-the-frontend-admin-panel-pages-feemanagementpage-programmemanagementpage-studentmanagementpage-resultsmanagementpage-messagingpage-hostelmanagementpage-surface-a-clear-human-readable-error-toast-or-inline-message-when-a-backend-mutation-returns-an-authorization-error-so-admins-know-immediately-if-the-session-actor-has-expired-and-they-need-to-re-authenticate-rather-than-silently-failing-or-showing-a-raw-error-string",
+      "title": "In the frontend Admin Panel pages (FeeManagementPage, ProgrammeManagementPage, StudentManagementPage, ResultsManagementPage, MessagingPage, HostelManagementPage), surface a clear, human-readable error toast or inline message when a backend mutation returns an authorization error, so admins know immediately if the session/actor has expired and they need to re-authenticate, rather than silently failing or showing a raw error string.",
+      "reqIds": [
+        "REQ-25"
       ],
       "version": 1
     }
@@ -230,6 +275,48 @@
       "id": "AR-18",
       "summary": "After login, the sidebar/menu for student, staff, and other roles should display a list of available services/features applicable to that role",
       "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-19",
+      "summary": "Fix auth-gating: role-specific sidebar/menu options (admin, student, staff, parent) must only be visible and accessible after the user is logged in; unauthenticated users should not see protected navigation items",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-20",
+      "summary": "Fix profiles not loading after login — user profiles fail to display/fetch after successful authentication across all roles",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-21",
+      "summary": "Fix the backend getProfile (or equivalent) function so that it reliably returns the stored user profile for the calling principal immediately after login. Ensure the profile lookup is keyed correctly by principal and that the stable variable holding profiles is read and written consistently — no silent failures or empty optional returns when a profile exists.",
+      "reqIds": [
+        "REQ-21"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-22",
+      "summary": "Fix 'Unauthorized — admin only' error when admin tries to add fees or perform admin actions despite being registered as admin. The backend admin role check is not recognising the authenticated principal as admin.",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-23",
+      "summary": "Fix the backend admin role check so that when a user registered with the 'admin' role calls privileged functions (such as addFeeItem, addCourse, registerStudent, updateAdmissionStatus, postResult, sendAnnouncement, approveHostelApplication, etc.), the caller's principal is correctly matched against the stored admin profile. The role check must read from the same stable profiles store used during registration and must not return #err(\"Unauthorized — admin only\") for a principal that has a stored profile with role = #admin.",
+      "reqIds": [
+        "REQ-23"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-24",
+      "summary": "Audit all admin-gated backend functions in main.mo and consolidate the admin authorization check into a single shared helper (e.g., isAdmin(caller: Principal): Bool) that reads from the stable profiles store. Replace any ad-hoc or duplicated role checks throughout the file with calls to this helper to ensure consistency.",
+      "reqIds": [
+        "REQ-24"
+      ],
       "status": "pending"
     }
   ],

@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
-import { toast } from 'sonner';
-import { PlusCircle, DollarSign, Loader2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useGetFeeTypes, useAddFeeType, isAuthorizationError, ADMIN_AUTH_ERROR_MSG, extractErrorMessage } from '../../hooks/useQueries';
+import { Button } from '../../components/ui/button';
+import { Input } from '../../components/ui/input';
+import { Label } from '../../components/ui/label';
+import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import {
   Table,
   TableBody,
@@ -12,120 +11,137 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
-import { useGetFeeTypes, useAddFeeType } from '../../hooks/useQueries';
-import { formatNairaFromBackend } from '../../utils/currency';
+} from '../../components/ui/table';
+import { toast } from 'sonner';
+import { PlusCircle, DollarSign, Loader2, AlertCircle } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '../../components/ui/alert';
 
 export default function FeeManagementPage() {
+  const { data: feeTypes = [], isLoading } = useGetFeeTypes();
+  const addFeeType = useAddFeeType();
+
   const [name, setName] = useState('');
   const [amount, setAmount] = useState('');
   const [programme, setProgramme] = useState('');
   const [session, setSession] = useState('');
+  const [authError, setAuthError] = useState<string | null>(null);
 
-  const { data: feeTypes = [], isLoading } = useGetFeeTypes();
-  const addFeeType = useAddFeeType();
+  const formatNaira = (amount: bigint) =>
+    new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN' }).format(Number(amount));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setAuthError(null);
+
+    if (!name.trim() || !amount || !programme.trim() || !session.trim()) {
+      toast.error('Please fill in all fields');
+      return;
+    }
 
     const amountNum = parseFloat(amount);
-    if (!name.trim() || isNaN(amountNum) || amountNum <= 0 || !programme.trim() || !session.trim()) {
-      toast.error('Please fill in all fields with valid values.');
+    if (isNaN(amountNum) || amountNum <= 0) {
+      toast.error('Please enter a valid amount');
       return;
     }
 
     try {
       await addFeeType.mutateAsync({
         name: name.trim(),
-        amount: BigInt(Math.round(amountNum)),
+        amount: BigInt(Math.round(amountNum * 100)),
         programme: programme.trim(),
         session: session.trim(),
       });
-      toast.success(`Fee type "${name}" added successfully!`);
+      toast.success('Fee type added successfully!');
       setName('');
       setAmount('');
       setProgramme('');
       setSession('');
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Failed to add fee type';
-      toast.error(message);
+    } catch (error: unknown) {
+      const msg = extractErrorMessage(error);
+      if (isAuthorizationError(error)) {
+        setAuthError(ADMIN_AUTH_ERROR_MSG);
+        toast.error(ADMIN_AUTH_ERROR_MSG);
+      } else {
+        toast.error(`Failed to add fee type: ${msg}`);
+      }
     }
   };
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">Fee Management</h1>
-        <p className="text-muted-foreground">Define and manage fee types for programmes and sessions.</p>
+    <div className="p-6 space-y-6">
+      <div className="flex items-center gap-3">
+        <DollarSign className="h-7 w-7 text-primary" />
+        <h1 className="text-2xl font-bold">Fee Management</h1>
       </div>
 
-      {/* Add Fee Form */}
+      {authError && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Authorization Error</AlertTitle>
+          <AlertDescription>
+            {authError}
+            <button
+              className="ml-2 underline font-medium"
+              onClick={() => setAuthError(null)}
+            >
+              Dismiss
+            </button>
+          </AlertDescription>
+        </Alert>
+      )}
+
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <PlusCircle className="h-5 w-5 text-primary" />
+            <PlusCircle className="h-5 w-5" />
             Add New Fee Type
           </CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="fee-name">Fee Name</Label>
+            <div className="space-y-1.5">
+              <Label htmlFor="feeName">Fee Name</Label>
               <Input
-                id="fee-name"
-                placeholder="e.g. School Fees, Acceptance Fee"
+                id="feeName"
+                placeholder="e.g. Tuition Fee"
                 value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
+                onChange={(e) => { setName(e.target.value); setAuthError(null); }}
               />
             </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="fee-amount">Amount (₦)</Label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-medium">₦</span>
-                <Input
-                  id="fee-amount"
-                  type="number"
-                  placeholder="e.g. 150000"
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                  className="pl-8"
-                  min="0"
-                  step="0.01"
-                  required
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="fee-programme">Programme</Label>
+            <div className="space-y-1.5">
+              <Label htmlFor="feeAmount">Amount (₦)</Label>
               <Input
-                id="fee-programme"
-                placeholder="e.g. Computer Science, All Programmes"
+                id="feeAmount"
+                type="number"
+                placeholder="e.g. 150000"
+                value={amount}
+                onChange={(e) => { setAmount(e.target.value); setAuthError(null); }}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="feeProgramme">Programme</Label>
+              <Input
+                id="feeProgramme"
+                placeholder="e.g. Computer Science"
                 value={programme}
-                onChange={(e) => setProgramme(e.target.value)}
-                required
+                onChange={(e) => { setProgramme(e.target.value); setAuthError(null); }}
               />
             </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="fee-session">Session</Label>
+            <div className="space-y-1.5">
+              <Label htmlFor="feeSession">Session</Label>
               <Input
-                id="fee-session"
+                id="feeSession"
                 placeholder="e.g. 2024/2025"
                 value={session}
-                onChange={(e) => setSession(e.target.value)}
-                required
+                onChange={(e) => { setSession(e.target.value); setAuthError(null); }}
               />
             </div>
-
             <div className="md:col-span-2">
               <Button type="submit" disabled={addFeeType.isPending} className="w-full md:w-auto">
                 {addFeeType.isPending ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Adding Fee...
+                    Adding...
                   </>
                 ) : (
                   <>
@@ -139,44 +155,36 @@ export default function FeeManagementPage() {
         </CardContent>
       </Card>
 
-      {/* Fee Types List */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <DollarSign className="h-5 w-5 text-primary" />
-            Existing Fee Types
-          </CardTitle>
+          <CardTitle>Fee Schedule</CardTitle>
         </CardHeader>
         <CardContent>
           {isLoading ? (
             <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin text-primary" />
-              <span className="ml-2 text-muted-foreground">Loading fee types...</span>
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             </div>
           ) : feeTypes.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <DollarSign className="h-12 w-12 mx-auto mb-3 opacity-30" />
-              <p>No fee types defined yet. Add your first fee type above.</p>
-            </div>
+            <p className="text-center text-muted-foreground py-8">No fee types defined yet.</p>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Fee Name</TableHead>
-                  <TableHead>Amount</TableHead>
                   <TableHead>Programme</TableHead>
                   <TableHead>Session</TableHead>
+                  <TableHead className="text-right">Amount</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {feeTypes.map((fee) => (
                   <TableRow key={String(fee.id)}>
                     <TableCell className="font-medium">{fee.name}</TableCell>
-                    <TableCell className="font-semibold text-primary">
-                      {formatNairaFromBackend(fee.amount)}
-                    </TableCell>
                     <TableCell>{fee.programme}</TableCell>
                     <TableCell>{fee.session}</TableCell>
+                    <TableCell className="text-right font-mono">
+                      {formatNaira(fee.amount / 100n)}
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>

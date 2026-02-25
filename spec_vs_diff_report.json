@@ -1,72 +1,57 @@
 {
   "kind": "spec_vs_diff_report",
   "version": "1.0",
-  "generatedAt": "2026-02-25T19:31:48.009Z",
-  "summary": "The diff implements the three requested requirements with good coverage. REQ-15 is largely addressed via backend changes and frontend wiring of mutations with toast notifications. REQ-16 is addressed via a new currency utility and its usage across fee-related pages. REQ-17 is addressed via role-based service menus in Navigation.tsx and individual dashboard sidebars. However, several specific gaps exist: staffServices and parentServices in Navigation.tsx are incomplete (missing several required menu items), the Student nav in Navigation.tsx is missing 'Announcements', and the admin Navigation menu is missing 'Exams & Records Portal'.",
+  "generatedAt": "2026-02-25T20:38:12.032Z",
+  "summary": "The diff implements most of the requirements. REQ-23 and REQ-24 are addressed in backend/main.mo with a consolidated isAdmin/requireAdmin helper reading from the stable userProfiles store. REQ-25 is addressed across all six admin panel pages with auth error banners and toast messages. However, there are concerns about whether the backend fix is fully correct (the diff shows Map.empty which may not be stable/persistent), and the diff is truncated so full verification of REQ-24's consolidation across all admin-gated functions is not possible. The frontend coverage for REQ-25 appears complete across the listed pages.",
   "missing_requirements": [
     {
-      "id": "REQ-17",
-      "requirement": "Staff service menu in Navigation must include: My Profile, Assigned Courses, Enrolled Students, Announcements, Exams & Records Portal",
-      "reason": "In Navigation.tsx, staffServices only contains 'Dashboard' — all five required staff service links are missing from the Navigation dropdown, though StaffDashboard.tsx sidebar has them.",
+      "id": "REQ-23",
+      "requirement": "The backend helper function that checks for admin role uses the same stable HashMap/Trie/variable that profiles are written to during registration — not a separate or uninitialized store.",
+      "reason": "The diff shows 'let userProfiles = Map.empty<Principal, UserProfile>()' which appears to initialize a new, non-stable map rather than a stable variable. If this is not actually persisted across upgrades as a stable store, it would not satisfy the requirement that the admin check reads from the same stable store used during registration. The diff is truncated so the full stable variable declarations cannot be confirmed.",
       "evidence": [
-        "frontend/src/components/layout/Navigation.tsx",
-        "frontend/src/pages/staff/StaffDashboard.tsx"
+        "backend/main.mo"
       ]
     },
     {
-      "id": "REQ-17",
-      "requirement": "Parent service menu in Navigation must include: Linked Student Overview, Student Results, Fee Status, Course Registrations",
-      "reason": "In Navigation.tsx, parentServices only contains 'Dashboard' — all four required parent service links are missing from the Navigation dropdown, though ParentDashboard.tsx sidebar has them.",
+      "id": "REQ-24",
+      "requirement": "No admin-gated function contains its own inline role-check logic that could diverge from the central helper. All previously broken admin operations succeed after this consolidation.",
+      "reason": "The diff is truncated and only shows the helper definitions (isAdmin, requireAdmin, requireAdminOrStaff). It is not possible to confirm from the truncated diff that every admin-gated function (addFeeItem, addCourse, registerStudent, updateAdmissionStatus, postResult, sendAnnouncement, approveHostelApplication) has been updated to use requireAdmin instead of inline checks.",
       "evidence": [
-        "frontend/src/components/layout/Navigation.tsx",
-        "frontend/src/pages/parent/ParentDashboard.tsx"
-      ]
-    },
-    {
-      "id": "REQ-17",
-      "requirement": "Admin service menu in Navigation must include 'Exams & Records Portal'",
-      "reason": "Navigation.tsx adminServices does not include an 'Exams & Records Portal' entry, though AdminDashboard.tsx sidebar does include it.",
-      "evidence": [
-        "frontend/src/components/layout/Navigation.tsx",
-        "frontend/src/pages/admin/AdminDashboard.tsx"
-      ]
-    },
-    {
-      "id": "REQ-17",
-      "requirement": "Student service menu in Navigation must include 'Announcements'",
-      "reason": "Navigation.tsx studentServices does not include an 'Announcements' link, though StudentDashboard.tsx sidebar includes it.",
-      "evidence": [
-        "frontend/src/components/layout/Navigation.tsx",
-        "frontend/src/pages/student/StudentDashboard.tsx"
+        "backend/main.mo"
       ]
     }
   ],
   "hallucinated_features": [
     {
-      "description": "Student search/filter functionality added to StudentManagementPage",
-      "reason": "The build request does not mention a search feature for the student list, but the diff adds a searchQuery state and filters students by name, ID, and email.",
+      "description": "An AccessControl mixin system (MixinAuthorization, AccessControl.initState, assignCallerUserRole, requireUser) was introduced as a separate authorization layer on top of the profile-based isAdmin check.",
+      "reason": "The build request only asked for fixing the role-check logic reading from the stable profiles store and consolidating it into a single helper. It did not request a separate access-control layer, mixin pattern, or assignCallerUserRole flow. This adds new infrastructure beyond fixing the authorization bug.",
       "evidence": [
-        "frontend/src/pages/admin/StudentManagementPage.tsx"
+        "backend/main.mo",
+        "frontend/src/hooks/useQueries.ts"
+      ]
+    },
+    {
+      "description": "AdmissionsManagementPage.tsx was also updated with authorization error handling, even though REQ-25 only listed FeeManagementPage, ProgrammeManagementPage, StudentManagementPage, ResultsManagementPage, MessagingPage, and HostelManagementPage.",
+      "reason": "REQ-25 explicitly lists six pages; AdmissionsManagementPage is not among them. Adding auth error handling to it goes beyond the stated requirements.",
+      "evidence": [
+        "frontend/src/pages/admin/AdmissionsManagementPage.tsx"
       ]
     }
   ],
-  "confidence": 0.78,
+  "confidence": 0.62,
   "changed_files": [
     "backend/main.mo",
     "frontend-file-summaries.txt",
-    "frontend/src/components/layout/Navigation.tsx",
+    "frontend/src/components/auth/ProfileSetupModal.tsx",
+    "frontend/src/components/layout/Layout.tsx",
     "frontend/src/hooks/useQueries.ts",
-    "frontend/src/pages/admin/AdminDashboard.tsx",
+    "frontend/src/pages/admin/AdmissionsManagementPage.tsx",
     "frontend/src/pages/admin/FeeManagementPage.tsx",
+    "frontend/src/pages/admin/HostelManagementPage.tsx",
+    "frontend/src/pages/admin/MessagingPage.tsx",
     "frontend/src/pages/admin/ProgrammeManagementPage.tsx",
+    "frontend/src/pages/admin/ResultsManagementPage.tsx",
     "frontend/src/pages/admin/StudentManagementPage.tsx",
-    "frontend/src/pages/parent/ParentDashboard.tsx",
-    "frontend/src/pages/staff/StaffDashboard.tsx",
-    "frontend/src/pages/student/FeeStatementPage.tsx",
-    "frontend/src/pages/student/PaymentHistoryPage.tsx",
-    "frontend/src/pages/student/ReceiptPage.tsx",
-    "frontend/src/pages/student/StudentDashboard.tsx",
-    "frontend/src/utils/currency.ts",
     "project_state.json"
   ]
 }
