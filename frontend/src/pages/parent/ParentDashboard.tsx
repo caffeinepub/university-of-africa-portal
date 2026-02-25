@@ -13,7 +13,6 @@ import { Skeleton } from '../../components/ui/skeleton';
 import { Badge } from '../../components/ui/badge';
 import {
   LayoutDashboard,
-  Users,
   FileText,
   AlertCircle,
   RefreshCw,
@@ -21,7 +20,14 @@ import {
   GraduationCap,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import type { Result } from '../../backend';
+
+interface ResultItem {
+  studentId: string;
+  courseId: number | bigint;
+  semester: string;
+  grade: string;
+  score: number | bigint;
+}
 
 const sidebarLinks = [
   { label: 'Dashboard', href: '/parent', icon: LayoutDashboard },
@@ -35,7 +41,7 @@ export default function ParentDashboard() {
   const navigate = useNavigate();
   const [studentIdInput, setStudentIdInput] = useState('');
   const [linkedStudentId, setLinkedStudentId] = useState('');
-  const [studentResults, setStudentResults] = useState<Result[]>([]);
+  const [studentResults, setStudentResults] = useState<ResultItem[]>([]);
 
   const {
     data: userProfile,
@@ -51,26 +57,26 @@ export default function ParentDashboard() {
   const handleLinkStudent = async () => {
     if (!studentIdInput.trim()) return;
     try {
-      await linkParent.mutateAsync(studentIdInput.trim());
+      const parentId = userProfile?.idNumber ?? '';
+      await linkParent.mutateAsync({ parentId, studentId: studentIdInput.trim() });
       setLinkedStudentId(studentIdInput.trim());
-      // Fetch results for the newly linked student
       const results = await getResultsForStudent.mutateAsync(studentIdInput.trim());
-      setStudentResults(results ?? []);
+      setStudentResults((results as ResultItem[]) ?? []);
       toast.success('Student linked successfully');
-    } catch (err) {
+    } catch {
       toast.error('Failed to link student. Please check the student ID.');
     }
   };
 
   // Group results by semester
-  const resultsBySemester = studentResults.reduce<Record<string, Result[]>>((acc, r) => {
+  const resultsBySemester = studentResults.reduce<Record<string, ResultItem[]>>((acc, r) => {
     const key = r.semester;
     if (!acc[key]) acc[key] = [];
     acc[key].push(r);
     return acc;
   }, {});
 
-  const calculateGPA = (semResults: Result[]) => {
+  const calculateGPA = (semResults: ResultItem[]) => {
     if (semResults.length === 0) return '0.00';
     const total = semResults.reduce((sum, r) => sum + (gradePoints[r.grade] ?? 0), 0);
     return (total / semResults.length).toFixed(2);
@@ -82,9 +88,7 @@ export default function ParentDashboard() {
       <div className="flex min-h-[calc(100vh-4rem)]">
         <aside className="hidden md:flex w-64 flex-col border-r border-border bg-card p-4 gap-2">
           <Skeleton className="h-6 w-32 mb-4" />
-          {Array.from({ length: 1 }).map((_, i) => (
-            <Skeleton key={i} className="h-9 w-full rounded-md" />
-          ))}
+          <Skeleton className="h-9 w-full rounded-md" />
         </aside>
         <div className="flex-1 p-6 space-y-6">
           <Skeleton className="h-8 w-64" />
@@ -103,7 +107,7 @@ export default function ParentDashboard() {
           <AlertCircle className="h-12 w-12 text-destructive mx-auto" />
           <h2 className="text-xl font-semibold">Failed to load profile</h2>
           <p className="text-muted-foreground text-sm">
-            There was an error loading your parent profile. Please try again.
+            There was an error loading your profile. Please try again.
           </p>
           <Button onClick={() => refetchProfile()} variant="outline">
             <RefreshCw className="h-4 w-4 mr-2" />
@@ -142,102 +146,104 @@ export default function ParentDashboard() {
       <div className="flex-1 p-6 space-y-6 overflow-auto">
         {/* Header */}
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Parent Dashboard</h1>
+          <h1 className="text-2xl font-bold text-foreground">
+            Welcome, {userProfile.name.split(' ')[0]}!
+          </h1>
           <p className="text-muted-foreground text-sm mt-1">
-            Welcome, {userProfile.name} · {userProfile.email}
+            Parent ID: {userProfile.idNumber} · {userProfile.email}
           </p>
         </div>
 
-        {/* Link student */}
+        {/* Link Student Card */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
-              <Link2 className="h-4 w-4" />
-              Link to Student
+              <Link2 className="h-5 w-5 text-primary" />
+              Link Student Account
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex gap-3 items-end">
-              <div className="flex-1 space-y-1.5">
-                <Label htmlFor="studentId">Student ID / Matric Number</Label>
+            <div className="flex gap-3">
+              <div className="flex-1">
+                <Label htmlFor="studentId" className="sr-only">Student ID</Label>
                 <Input
                   id="studentId"
-                  placeholder="e.g. STU/2024/001"
+                  placeholder="Enter student matriculation number"
                   value={studentIdInput}
                   onChange={(e) => setStudentIdInput(e.target.value)}
                 />
               </div>
               <Button
                 onClick={handleLinkStudent}
-                disabled={linkParent.isPending || !studentIdInput.trim()}
+                disabled={!studentIdInput.trim() || linkParent.isPending}
               >
                 {linkParent.isPending ? (
-                  <span className="flex items-center gap-1.5">
-                    <span className="animate-spin">⏳</span> Linking…
+                  <span className="flex items-center gap-2">
+                    <span className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
+                    Linking...
                   </span>
                 ) : (
-                  <>
-                    <Users className="h-4 w-4 mr-1.5" />
-                    Link Student
-                  </>
+                  'Link Student'
                 )}
               </Button>
             </div>
+            {linkedStudentId && (
+              <p className="text-sm text-green-600 mt-2 flex items-center gap-1">
+                <GraduationCap className="h-4 w-4" />
+                Linked to student: <strong>{linkedStudentId}</strong>
+              </p>
+            )}
           </CardContent>
         </Card>
 
-        {/* Student results */}
-        {linkedStudentId && (
+        {/* Student Results */}
+        {studentResults.length > 0 && (
           <div className="space-y-4">
             <h2 className="text-lg font-semibold flex items-center gap-2">
-              <GraduationCap className="h-5 w-5 text-primary" />
-              Academic Results for {linkedStudentId}
+              <FileText className="h-5 w-5 text-primary" />
+              Academic Results
             </h2>
-            {studentResults.length === 0 ? (
-              <Card>
-                <CardContent className="py-8 text-center text-muted-foreground">
-                  No results found for this student.
+            {Object.entries(resultsBySemester).map(([semester, semResults]) => (
+              <Card key={semester}>
+                <CardHeader className="pb-2">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-base">{semester}</CardTitle>
+                    <Badge variant="outline">GPA: {calculateGPA(semResults)}</Badge>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    {semResults.map((result, idx) => (
+                      <div
+                        key={idx}
+                        className="flex items-center justify-between p-2 rounded-lg bg-muted/50 text-sm"
+                      >
+                        <span className="text-foreground/80">
+                          Course #{String(result.courseId)}
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">{String(result.score)}/100</span>
+                          <Badge
+                            variant={result.grade === 'F' ? 'destructive' : 'secondary'}
+                          >
+                            {result.grade}
+                          </Badge>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </CardContent>
               </Card>
-            ) : (
-              Object.entries(resultsBySemester).map(([semester, semResults]) => (
-                <Card key={semester}>
-                  <CardHeader className="pb-2">
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-sm font-semibold">{semester}</CardTitle>
-                      <Badge variant="secondary">GPA: {calculateGPA(semResults)}</Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-2">
-                      {semResults.map((result, idx) => (
-                        <div
-                          key={idx}
-                          className="flex items-center justify-between py-1.5 border-b border-border last:border-0"
-                        >
-                          <div className="flex items-center gap-2">
-                            <FileText className="h-3.5 w-3.5 text-muted-foreground" />
-                            <span className="text-sm">Course #{String(result.courseId)}</span>
-                          </div>
-                          <div className="flex items-center gap-3">
-                            <span className="text-sm text-muted-foreground">
-                              Score: {String(result.score)}
-                            </span>
-                            <Badge
-                              variant={result.grade === 'F' ? 'destructive' : 'default'}
-                              className="w-8 justify-center"
-                            >
-                              {result.grade}
-                            </Badge>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              ))
-            )}
+            ))}
           </div>
+        )}
+
+        {linkedStudentId && studentResults.length === 0 && !getResultsForStudent.isPending && (
+          <Card>
+            <CardContent className="py-10 text-center text-muted-foreground">
+              No results available for this student yet.
+            </CardContent>
+          </Card>
         )}
       </div>
     </div>

@@ -1,173 +1,146 @@
 import React, { useState } from 'react';
+import { useNavigate } from '@tanstack/react-router';
 import { toast } from 'sonner';
-import { useActor } from '../../hooks/useActor';
-import { useGetAllStudents, useAddStudentProfile, extractErrorMessage } from '../../hooks/useQueries';
-import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
-import { Button } from '../../components/ui/button';
-import { Input } from '../../components/ui/input';
-import { Label } from '../../components/ui/label';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/table';
-import { Loader2, PlusCircle, Users } from 'lucide-react';
+import { useGetAllStudents, useAddStudentProfile } from '../../hooks/useQueries';
 import RoleGuard from '../../components/auth/RoleGuard';
-import { UserRole } from '../../backend';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { ArrowLeft, Users, Plus } from 'lucide-react';
+import { useActor } from '../../hooks/useActor';
 
 function StudentManagementContent() {
-  const { actor, isFetching: actorFetching } = useActor();
+  const navigate = useNavigate();
+  const { isFetching: actorFetching } = useActor();
   const { data: students = [], isLoading } = useGetAllStudents();
-  const addStudentProfile = useAddStudentProfile();
+  const addStudent = useAddStudentProfile();
 
   const [name, setName] = useState('');
   const [idNumber, setIdNumber] = useState('');
   const [email, setEmail] = useState('');
-
-  const isActorReady = !!actor && !actorFetching;
+  const [programme, setProgramme] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isActorReady) {
-      toast.error('Please wait — connecting to the server...');
-      return;
-    }
-    if (!name || !idNumber || !email) {
-      toast.error('Please fill in all fields.');
-      return;
-    }
     try {
-      await addStudentProfile.mutateAsync({ name, idNumber, email });
-      toast.success('Student registered successfully!');
-      setName('');
-      setIdNumber('');
-      setEmail('');
+      await addStudent.mutateAsync({ name, idNumber, email, programme });
+      toast.success('Student registered successfully');
+      setName(''); setIdNumber(''); setEmail(''); setProgramme('');
     } catch (err) {
-      toast.error(extractErrorMessage(err));
+      toast.error(err instanceof Error ? err.message : 'Failed to register student');
     }
   };
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center gap-3">
-        <Users className="h-8 w-8 text-primary" />
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Student Management</h1>
-          <p className="text-muted-foreground">Register and manage student profiles</p>
+    <div className="min-h-screen bg-background">
+      <header className="bg-primary text-primary-foreground py-4 px-6 shadow-md">
+        <div className="max-w-7xl mx-auto flex items-center gap-4">
+          <img src="/assets/generated/university-crest.dim_256x256.png" alt="Crest" className="w-10 h-10 object-contain" />
+          <div className="flex-1">
+            <h1 className="text-lg font-bold">Student Management</h1>
+            <p className="text-xs text-primary-foreground/70">Register and manage students</p>
+          </div>
+          <Button variant="outline" size="sm" className="border-primary-foreground/30 text-primary-foreground hover:bg-primary-foreground/10" onClick={() => navigate({ to: '/admin' })}>
+            <ArrowLeft className="w-4 h-4 mr-2" />Dashboard
+          </Button>
         </div>
-      </div>
+      </header>
 
-      {!isActorReady && (
-        <div className="flex items-center gap-2 p-3 bg-muted rounded-lg text-muted-foreground text-sm">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          <span>Connecting to server — please wait before submitting...</span>
-        </div>
-      )}
+      <main className="max-w-7xl mx-auto px-4 py-8 space-y-6">
+        {/* Add Student Form */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Plus className="w-4 h-4" />Register New Student
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label>Full Name</Label>
+                <Input placeholder="Student name" value={name} onChange={e => setName(e.target.value)} required disabled={actorFetching} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Matriculation Number</Label>
+                <Input placeholder="e.g. MATRIC/2024/001" value={idNumber} onChange={e => setIdNumber(e.target.value)} required disabled={actorFetching} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Email</Label>
+                <Input type="email" placeholder="student@university.edu" value={email} onChange={e => setEmail(e.target.value)} required disabled={actorFetching} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Programme</Label>
+                <Input placeholder="e.g. Computer Science" value={programme} onChange={e => setProgramme(e.target.value)} disabled={actorFetching} />
+              </div>
+              <div className="sm:col-span-2">
+                <Button type="submit" disabled={addStudent.isPending || actorFetching} className="w-full sm:w-auto">
+                  {addStudent.isPending ? 'Registering...' : 'Register Student'}
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <PlusCircle className="h-5 w-5" />
-            Register New Student
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="studentName">Full Name</Label>
-              <Input
-                id="studentName"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="e.g. John Doe"
-                disabled={addStudentProfile.isPending}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="studentId">Student ID / Matric Number</Label>
-              <Input
-                id="studentId"
-                value={idNumber}
-                onChange={(e) => setIdNumber(e.target.value)}
-                placeholder="e.g. CSC/2024/001"
-                disabled={addStudentProfile.isPending}
-              />
-            </div>
-            <div className="space-y-2 md:col-span-2">
-              <Label htmlFor="studentEmail">Email Address</Label>
-              <Input
-                id="studentEmail"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="e.g. john.doe@university.edu"
-                disabled={addStudentProfile.isPending}
-              />
-            </div>
-            <div className="md:col-span-2">
-              <Button
-                type="submit"
-                disabled={!isActorReady || addStudentProfile.isPending}
-                className="w-full md:w-auto"
-              >
-                {addStudentProfile.isPending ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    Registering...
-                  </>
-                ) : !isActorReady ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    Connecting...
-                  </>
-                ) : (
-                  <>
-                    <PlusCircle className="h-4 w-4 mr-2" />
-                    Register Student
-                  </>
-                )}
-              </Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>All Students ({students.length})</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin text-primary" />
-            </div>
-          ) : students.length === 0 ? (
-            <p className="text-center text-muted-foreground py-8">No students registered yet.</p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>ID / Matric Number</TableHead>
-                  <TableHead>Email</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {students.map((student, idx) => (
-                  <TableRow key={idx}>
-                    <TableCell className="font-medium">{student.name}</TableCell>
-                    <TableCell className="font-mono">{student.idNumber}</TableCell>
-                    <TableCell>{student.email}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+        {/* Students Table */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Users className="w-4 h-4" />Registered Students ({students.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            {isLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="w-6 h-6 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
+              </div>
+            ) : students.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground">
+                <Users className="w-10 h-10 mx-auto mb-2 opacity-30" />
+                <p>No students registered yet</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Matric Number</TableHead>
+                      <TableHead>Email</TableHead>
+                      <TableHead>Programme</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {students.map((s: any) => (
+                      <TableRow key={s.idNumber}>
+                        <TableCell className="font-medium">{s.name}</TableCell>
+                        <TableCell>{s.idNumber}</TableCell>
+                        <TableCell>{s.email}</TableCell>
+                        <TableCell>{s.programme ?? s.department ?? '—'}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </main>
     </div>
   );
 }
 
 export default function StudentManagementPage() {
   return (
-    <RoleGuard requiredRole={UserRole.admin}>
+    <RoleGuard requiredRole="admin">
       <StudentManagementContent />
     </RoleGuard>
   );

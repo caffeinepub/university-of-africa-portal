@@ -10,65 +10,26 @@ import type { ActorMethod } from '@icp-sdk/core/agent';
 import type { IDL } from '@icp-sdk/core/candid';
 import type { Principal } from '@icp-sdk/core/principal';
 
-export interface AdmissionApplication {
-  'id' : bigint,
-  'status' : AdmissionStatus,
-  'documents' : Array<string>,
-  'name' : string,
-  'programmeChoice' : string,
-  'jambNumber' : string,
-  'oLevelResults' : Array<string>,
-}
-export type AdmissionStatus = { 'pending' : null } |
-  { 'admitted' : null } |
-  { 'rejected' : null };
-export interface Announcement {
-  'id' : bigint,
-  'content' : string,
-  'timestamp' : bigint,
-  'targetRole' : string,
-}
-export interface Course {
-  'id' : bigint,
-  'semester' : string,
-  'code' : string,
-  'name' : string,
-  'programme' : string,
-}
-export interface FeeType {
-  'id' : bigint,
-  'name' : string,
-  'session' : string,
-  'amount' : bigint,
-  'programme' : string,
-}
-export interface HostelApplication {
-  'id' : bigint,
+export type GeneratePasswordResponse = {
+    'ok' : { 'generatedId' : string, 'password' : string }
+  } |
+  { 'err' : string };
+export interface PortalAccessApplication {
   'status' : { 'pending' : null } |
     { 'approved' : null } |
     { 'rejected' : null },
-  'studentId' : string,
-  'session' : string,
-  'roomType' : string,
+  'applicantName' : string,
+  'generatedId' : [] | [string],
+  'role' : PortalAccessRole,
+  'submittedAt' : bigint,
+  'email' : string,
+  'generatedPassword' : [] | [string],
+  'programmeOrDepartment' : [] | [string],
 }
-export interface PaymentRecord {
-  'id' : bigint,
-  'status' : { 'pending' : null } |
-    { 'completed' : null },
-  'paymentMethod' : string,
-  'studentId' : string,
-  'date' : bigint,
-  'feeType' : string,
-  'reference' : string,
-  'amount' : bigint,
-}
-export interface Result {
-  'studentId' : string,
-  'semester' : string,
-  'score' : bigint,
-  'grade' : string,
-  'courseId' : bigint,
-}
+export type PortalAccessRole = { 'admin' : null } |
+  { 'staff' : null } |
+  { 'student' : null } |
+  { 'parent' : null };
 export interface ShoppingItem {
   'productName' : string,
   'currency' : string,
@@ -98,7 +59,9 @@ export interface UserProfile {
   'name' : string,
   'role' : UserRole,
   'email' : string,
+  'level' : [] | [bigint],
   'idNumber' : string,
+  'department' : [] | [string],
 }
 export type UserRole = { 'admin' : null } |
   { 'staff' : null } |
@@ -115,80 +78,39 @@ export interface http_request_result {
 }
 export interface _SERVICE {
   '_initializeAccessControlWithSecret' : ActorMethod<[string], undefined>,
-  'addCourse' : ActorMethod<[string, string, string, string], undefined>,
-  'addFeeType' : ActorMethod<[string, bigint, string, string], undefined>,
-  'addResult' : ActorMethod<
-    [string, bigint, string, string, bigint],
-    undefined
+  'approvePortalAccessApplication' : ActorMethod<
+    [string],
+    GeneratePasswordResponse
   >,
-  'addStudentProfile' : ActorMethod<[string, string, string], undefined>,
-  'applyForHostel' : ActorMethod<[string, string], bigint>,
-  'assignAccessRole' : ActorMethod<[Principal, UserRole__1], undefined>,
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole__1], undefined>,
-  'bootstrapAdmin' : ActorMethod<[string, string, string], undefined>,
-  'checkAdmissionStatus' : ActorMethod<[string], [] | [AdmissionStatus]>,
-  'checkAdmissionStatusByName' : ActorMethod<[string], [] | [AdmissionStatus]>,
-  'checkUnpaidFees' : ActorMethod<[], Array<FeeType>>,
   'createCheckoutSession' : ActorMethod<
     [Array<ShoppingItem>, string, string],
     string
   >,
-  'deregisterCourse' : ActorMethod<[bigint], undefined>,
-  'getAggregatedStudentData' : ActorMethod<
-    [],
-    [Array<Result>, Array<PaymentRecord>]
-  >,
-  'getAllAdmissionApplications' : ActorMethod<[], Array<AdmissionApplication>>,
-  'getAllHostelApplications' : ActorMethod<[], Array<HostelApplication>>,
-  'getAllPayments' : ActorMethod<[], Array<PaymentRecord>>,
-  'getAllResults' : ActorMethod<[], Array<Result>>,
-  'getAllStudents' : ActorMethod<[], Array<UserProfile>>,
-  'getAllUserProfiles' : ActorMethod<[], Array<UserProfile>>,
-  'getAnnouncements' : ActorMethod<[string], Array<Announcement>>,
-  'getCallerRole' : ActorMethod<[], [] | [UserRole]>,
-  'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
   'getCallerUserRole' : ActorMethod<[], UserRole__1>,
-  'getCourses' : ActorMethod<[], Array<Course>>,
-  'getFeeTypes' : ActorMethod<[], Array<FeeType>>,
-  'getMyHostelApplication' : ActorMethod<[], [] | [HostelApplication]>,
-  'getPaymentHistory' : ActorMethod<[], Array<PaymentRecord>>,
-  'getRegisteredCourses' : ActorMethod<[], Array<bigint>>,
-  'getResults' : ActorMethod<[], Array<Result>>,
-  'getResultsForStudent' : ActorMethod<[string], Array<Result>>,
+  'getMyPortalAccessApplication' : ActorMethod<
+    [string],
+    [] | [PortalAccessApplication]
+  >,
+  'getPortalAccessApplications' : ActorMethod<
+    [],
+    Array<PortalAccessApplication>
+  >,
   'getStripeSessionStatus' : ActorMethod<[string], StripeSessionStatus>,
-  'getUserDashboard' : ActorMethod<[], string>,
-  'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
   'isStripeConfigured' : ActorMethod<[], boolean>,
-  'linkParentToStudent' : ActorMethod<[string], undefined>,
-  'recordPayment' : ActorMethod<[bigint, [] | [string], string], undefined>,
-  'recordPaymentByAdmin' : ActorMethod<
-    [string, bigint, string, string],
-    undefined
+  'loginWithIdAndPassword' : ActorMethod<
+    [string, string],
+    { 'ok' : UserProfile } |
+      { 'err' : string }
   >,
-  'registerCourse' : ActorMethod<[bigint], undefined>,
-  'registerProfile' : ActorMethod<
-    [UserRole, string, string, string],
-    undefined
-  >,
-  'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
-  'sendAnnouncement' : ActorMethod<[string, string], undefined>,
+  'rejectPortalAccessApplication' : ActorMethod<[string], undefined>,
   'setStripeConfiguration' : ActorMethod<[StripeConfiguration], undefined>,
-  'submitApplication' : ActorMethod<
-    [string, string, Array<string>, string, Array<string>],
-    bigint
+  'submitPortalAccessApplication' : ActorMethod<
+    [string, string, PortalAccessRole, [] | [string]],
+    string
   >,
   'transform' : ActorMethod<[TransformationInput], TransformationOutput>,
-  'updateAdmissionStatus' : ActorMethod<[bigint, AdmissionStatus], undefined>,
-  'updateHostelApplicationStatus' : ActorMethod<
-    [
-      bigint,
-      { 'pending' : null } |
-        { 'approved' : null } |
-        { 'rejected' : null },
-    ],
-    undefined
-  >,
 }
 export declare const idlService: IDL.ServiceClass;
 export declare const idlInitArgs: IDL.Type[];

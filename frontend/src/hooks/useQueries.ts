@@ -1,46 +1,128 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useActor } from './useActor';
-import { useInternetIdentity } from './useInternetIdentity';
-import {
+import type {
   UserProfile,
-  UserRole,
-  AdmissionStatus,
-  Variant_pending_approved_rejected,
-  UserRole__1,
+  PortalAccessApplication,
+  GeneratePasswordResponse,
 } from '../backend';
 
-// ─── helpers ────────────────────────────────────────────────────────────────
+// ─── Helper ────────────────────────────────────────────────────────────────
 
 export function extractErrorMessage(error: unknown): string {
-  if (!error) return 'An unknown error occurred';
-  const msg = error instanceof Error ? error.message : String(error);
-  if (msg.includes('Unauthorized') || msg.includes('unauthorized')) {
-    if (msg.includes('admin')) return 'Unauthorized — admin only. Please ensure your account has admin role.';
-    if (msg.includes('authenticated')) return 'Unauthorized — please log in first.';
-    return 'Unauthorized — you do not have permission to perform this action.';
-  }
-  if (msg.includes('already exists') || msg.includes('re-bootstrap')) return 'An admin account already exists. Only one admin account is allowed.';
-  if (msg.includes('not found') || msg.includes('Not found')) return 'Record not found.';
-  if (msg.includes('Profile not found')) return 'User profile not found. Please complete your profile setup.';
-  return msg;
+  if (error instanceof Error) return error.message;
+  if (typeof error === 'string') return error;
+  return 'An unexpected error occurred';
 }
 
-// ─── profile ────────────────────────────────────────────────────────────────
+// ─── Portal Access Application Hooks ───────────────────────────────────────
+
+export function useSubmitPortalAccessApplication() {
+  const { actor } = useActor();
+  return useMutation({
+    mutationFn: async ({
+      applicantName,
+      email,
+      role,
+      programmeOrDepartment,
+    }: {
+      applicantName: string;
+      email: string;
+      role: string;
+      programmeOrDepartment: string | null;
+    }) => {
+      if (!actor) throw new Error('Actor not available');
+      const roleVariant = { __kind__: role } as any;
+      return actor.submitPortalAccessApplication(applicantName, email, roleVariant, programmeOrDepartment);
+    },
+  });
+}
+
+export function useGetPortalAccessApplications() {
+  const { actor, isFetching: actorFetching } = useActor();
+  return useQuery<PortalAccessApplication[]>({
+    queryKey: ['portalAccessApplications'],
+    queryFn: async () => {
+      if (!actor) return [];
+      return actor.getPortalAccessApplications();
+    },
+    enabled: !!actor && !actorFetching,
+  });
+}
+
+export function useApprovePortalAccessApplication() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (appId: string): Promise<GeneratePasswordResponse> => {
+      if (!actor) throw new Error('Actor not available');
+      return actor.approvePortalAccessApplication(appId);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['portalAccessApplications'] });
+    },
+  });
+}
+
+export function useRejectPortalAccessApplication() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (appId: string): Promise<void> => {
+      if (!actor) throw new Error('Actor not available');
+      return actor.rejectPortalAccessApplication(appId);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['portalAccessApplications'] });
+    },
+  });
+}
+
+export function useGetMyPortalAccessApplication(email: string) {
+  const { actor, isFetching: actorFetching } = useActor();
+  return useQuery<PortalAccessApplication | null>({
+    queryKey: ['myPortalAccessApplication', email],
+    queryFn: async () => {
+      if (!actor) return null;
+      return actor.getMyPortalAccessApplication(email);
+    },
+    enabled: !!actor && !actorFetching && !!email,
+  });
+}
+
+export function useLoginWithIdAndPassword() {
+  const { actor } = useActor();
+  return useMutation({
+    mutationFn: async ({
+      roleId,
+      password,
+    }: {
+      roleId: string;
+      password: string;
+    }): Promise<UserProfile> => {
+      if (!actor) throw new Error('Actor not available');
+      const result = await actor.loginWithIdAndPassword(roleId, password);
+      if (result.__kind__ === 'err') {
+        throw new Error(result.err);
+      }
+      return result.ok;
+    },
+  });
+}
+
+// ─── User Profile Hooks ─────────────────────────────────────────────────────
 
 export function useGetCallerUserProfile() {
   const { actor, isFetching: actorFetching } = useActor();
-  const { identity } = useInternetIdentity();
-
   const query = useQuery<UserProfile | null>({
-    queryKey: ['currentUserProfile', identity?.getPrincipal().toString()],
+    queryKey: ['currentUserProfile'],
     queryFn: async () => {
       if (!actor) throw new Error('Actor not available');
-      return actor.getCallerUserProfile();
+      const result = await (actor as any).getCallerUserProfile();
+      return result ?? null;
     },
-    enabled: !!actor && !actorFetching && !!identity,
-    retry: 2,
+    enabled: !!actor && !actorFetching,
+    retry: false,
   });
-
   return {
     ...query,
     isLoading: actorFetching || query.isLoading,
@@ -51,20 +133,10 @@ export function useGetCallerUserProfile() {
 export function useSaveCallerUserProfile() {
   const { actor } = useActor();
   const queryClient = useQueryClient();
-  const { identity } = useInternetIdentity();
-
   return useMutation({
     mutationFn: async (profile: UserProfile) => {
       if (!actor) throw new Error('Actor not available');
-      await actor.saveCallerUserProfile(profile);
-      // Also assign the #user access-control role so requireUser() passes
-      try {
-        if (identity) {
-          await actor.assignCallerUserRole(identity.getPrincipal(), UserRole__1.user);
-        }
-      } catch {
-        // May already be assigned; ignore
-      }
+      return (actor as any).saveCallerUserProfile(profile);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['currentUserProfile'] });
@@ -72,41 +144,30 @@ export function useSaveCallerUserProfile() {
   });
 }
 
-// ─── bootstrap admin ─────────────────────────────────────────────────────────
+// ─── Admission Hooks ────────────────────────────────────────────────────────
 
-export function useBootstrapAdmin() {
-  const { actor } = useActor();
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (data: { name: string; idNumber: string; email: string }) => {
-      if (!actor) throw new Error('Actor not available');
-      return actor.bootstrapAdmin(data.name, data.idNumber, data.email);
+export function useGetAdmissionApplications() {
+  const { actor, isFetching: actorFetching } = useActor();
+  return useQuery({
+    queryKey: ['admissionApplications'],
+    queryFn: async () => {
+      if (!actor) return [];
+      return (actor as any).getAdmissionApplications();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['currentUserProfile'] });
-      queryClient.invalidateQueries({ queryKey: ['currentUserRole'] });
-      queryClient.invalidateQueries({ queryKey: ['allUserProfiles'] });
-    },
+    enabled: !!actor && !actorFetching,
   });
 }
 
-// ─── admissions ─────────────────────────────────────────────────────────────
+// Alias for backward compat
+export const useGetAllAdmissionApplications = useGetAdmissionApplications;
 
-export function useSubmitApplication() {
+export function useSubmitAdmissionApplication() {
   const { actor } = useActor();
   const queryClient = useQueryClient();
-
   return useMutation({
-    mutationFn: async (data: {
-      name: string;
-      jambNumber: string;
-      oLevelResults: string[];
-      programmeChoice: string;
-      documents: string[];
-    }) => {
+    mutationFn: async (data: any) => {
       if (!actor) throw new Error('Actor not available');
-      return actor.submitApplication(
+      return (actor as any).submitAdmissionApplication(
         data.name,
         data.jambNumber,
         data.oLevelResults,
@@ -115,89 +176,125 @@ export function useSubmitApplication() {
       );
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['allAdmissionApplications'] });
+      queryClient.invalidateQueries({ queryKey: ['admissionApplications'] });
     },
   });
 }
 
-export function useGetAllAdmissionApplications() {
-  const { actor, isFetching } = useActor();
+// Alias used by ApplicationFormPage
+export const useSubmitApplication = useSubmitAdmissionApplication;
 
-  return useQuery({
-    queryKey: ['allAdmissionApplications'],
-    queryFn: async () => {
-      if (!actor) return [];
-      return actor.getAllAdmissionApplications();
+export function useAdmitApplicant() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: number) => {
+      if (!actor) throw new Error('Actor not available');
+      return (actor as any).admitApplicant(id);
     },
-    enabled: !!actor && !isFetching,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admissionApplications'] });
+    },
   });
 }
 
+export function useRejectAdmissionApplicant() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: number) => {
+      if (!actor) throw new Error('Actor not available');
+      return (actor as any).rejectAdmissionApplicant(id);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admissionApplications'] });
+    },
+  });
+}
+
+// Combined update status alias used by AdmissionsManagementPage
 export function useUpdateAdmissionStatus() {
   const { actor } = useActor();
   const queryClient = useQueryClient();
-
   return useMutation({
-    mutationFn: async ({ appId, status }: { appId: bigint; status: AdmissionStatus }) => {
+    mutationFn: async ({ id, status }: { id: number; status: string }) => {
       if (!actor) throw new Error('Actor not available');
-      return actor.updateAdmissionStatus(appId, status);
+      if (status === 'admitted') {
+        return (actor as any).admitApplicant(id);
+      } else {
+        return (actor as any).rejectAdmissionApplicant(id);
+      }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['allAdmissionApplications'] });
+      queryClient.invalidateQueries({ queryKey: ['admissionApplications'] });
     },
   });
 }
 
 export function useCheckAdmissionStatus() {
   const { actor } = useActor();
-
   return useMutation({
     mutationFn: async (jambNumber: string) => {
       if (!actor) throw new Error('Actor not available');
-      return actor.checkAdmissionStatus(jambNumber);
+      return (actor as any).checkAdmissionStatus(jambNumber);
     },
   });
 }
 
 export function useCheckAdmissionStatusByName() {
   const { actor } = useActor();
-
   return useMutation({
     mutationFn: async (name: string) => {
       if (!actor) throw new Error('Actor not available');
-      return actor.checkAdmissionStatusByName(name);
+      return (actor as any).checkAdmissionStatusByName(name);
     },
   });
 }
 
-// ─── courses ─────────────────────────────────────────────────────────────────
+// ─── Course Hooks ───────────────────────────────────────────────────────────
 
 export function useGetCourses() {
-  const { actor, isFetching } = useActor();
-
+  const { actor, isFetching: actorFetching } = useActor();
   return useQuery({
     queryKey: ['courses'],
     queryFn: async () => {
       if (!actor) return [];
-      return actor.getCourses();
+      return (actor as any).getCourses();
     },
-    enabled: !!actor && !isFetching,
+    enabled: !!actor && !actorFetching,
   });
 }
+
+export function useGetCoursesByDepartmentAndLevel(department: string, level: number) {
+  const { actor, isFetching: actorFetching } = useActor();
+  return useQuery({
+    queryKey: ['courses', department, level],
+    queryFn: async () => {
+      if (!actor) return [];
+      return (actor as any).getCoursesByDepartmentAndLevel(department, level);
+    },
+    enabled: !!actor && !actorFetching && !!department && !!level,
+  });
+}
+
+// Alias used by CourseRegistrationPage
+export const useGetCoursesForDepartmentAndLevel = useGetCoursesByDepartmentAndLevel;
 
 export function useAddCourse() {
   const { actor } = useActor();
   const queryClient = useQueryClient();
-
   return useMutation({
-    mutationFn: async (data: {
-      code: string;
-      name: string;
-      semester: string;
-      programme: string;
-    }) => {
+    mutationFn: async (data: any) => {
       if (!actor) throw new Error('Actor not available');
-      return actor.addCourse(data.code, data.name, data.semester, data.programme);
+      return (actor as any).addCourse(
+        data.code,
+        data.name,
+        data.semester,
+        data.programme,
+        data.department,
+        data.level,
+        data.creditUnits,
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['courses'] });
@@ -205,34 +302,27 @@ export function useAddCourse() {
   });
 }
 
-// ─── fee types ───────────────────────────────────────────────────────────────
+// ─── Fee Hooks ──────────────────────────────────────────────────────────────
 
 export function useGetFeeTypes() {
-  const { actor, isFetching } = useActor();
-
+  const { actor, isFetching: actorFetching } = useActor();
   return useQuery({
     queryKey: ['feeTypes'],
     queryFn: async () => {
       if (!actor) return [];
-      return actor.getFeeTypes();
+      return (actor as any).getFeeTypes();
     },
-    enabled: !!actor && !isFetching,
+    enabled: !!actor && !actorFetching,
   });
 }
 
 export function useAddFeeType() {
   const { actor } = useActor();
   const queryClient = useQueryClient();
-
   return useMutation({
-    mutationFn: async (data: {
-      name: string;
-      amount: bigint;
-      programme: string;
-      session: string;
-    }) => {
+    mutationFn: async (data: any) => {
       if (!actor) throw new Error('Actor not available');
-      return actor.addFeeType(data.name, data.amount, data.programme, data.session);
+      return (actor as any).addFeeType(data.name, data.amount, data.programme, data.session);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['feeTypes'] });
@@ -240,285 +330,237 @@ export function useAddFeeType() {
   });
 }
 
-// ─── payments ────────────────────────────────────────────────────────────────
+// ─── Payment Hooks ──────────────────────────────────────────────────────────
 
-export function useGetPaymentHistory() {
-  const { actor, isFetching } = useActor();
-
+export function useGetPayments() {
+  const { actor, isFetching: actorFetching } = useActor();
   return useQuery({
-    queryKey: ['paymentHistory'],
+    queryKey: ['payments'],
     queryFn: async () => {
       if (!actor) return [];
-      return actor.getPaymentHistory();
+      return (actor as any).getPayments();
     },
-    enabled: !!actor && !isFetching,
+    enabled: !!actor && !actorFetching,
   });
 }
 
-export function useGetAllPayments() {
-  const { actor, isFetching } = useActor();
+// Alias used by FeeStatementPage, PaymentHistoryPage, ReceiptPage
+export const useGetPaymentHistory = useGetPayments;
 
+export function useGetStudentPayments(studentId: string) {
+  const { actor, isFetching: actorFetching } = useActor();
   return useQuery({
-    queryKey: ['allPayments'],
+    queryKey: ['payments', studentId],
     queryFn: async () => {
       if (!actor) return [];
-      return actor.getAllPayments();
+      return (actor as any).getStudentPayments(studentId);
     },
-    enabled: !!actor && !isFetching,
+    enabled: !!actor && !actorFetching && !!studentId,
+  });
+}
+
+export function useGetPaymentById(paymentId: number) {
+  const { actor, isFetching: actorFetching } = useActor();
+  return useQuery({
+    queryKey: ['payment', paymentId],
+    queryFn: async () => {
+      if (!actor) return null;
+      return (actor as any).getPaymentById(paymentId);
+    },
+    enabled: !!actor && !actorFetching && paymentId !== undefined,
   });
 }
 
 export function useRecordPayment() {
   const { actor } = useActor();
   const queryClient = useQueryClient();
-
   return useMutation({
-    mutationFn: async (data: {
-      amount: bigint;
-      reference: string | null;
-      feeType: string;
-    }) => {
+    mutationFn: async (data: any) => {
       if (!actor) throw new Error('Actor not available');
-      return actor.recordPayment(data.amount, data.reference, data.feeType);
+      return (actor as any).recordPayment(
+        data.studentId,
+        data.amount,
+        data.reference,
+        data.feeType,
+        data.paymentMethod,
+      );
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['paymentHistory'] });
+      queryClient.invalidateQueries({ queryKey: ['payments'] });
     },
   });
 }
 
-export function useRecordPaymentByAdmin() {
-  const { actor } = useActor();
-  const queryClient = useQueryClient();
+// ─── Hostel Hooks ───────────────────────────────────────────────────────────
 
-  return useMutation({
-    mutationFn: async (data: {
-      studentId: string;
-      amount: bigint;
-      reference: string;
-      feeType: string;
-    }) => {
-      if (!actor) throw new Error('Actor not available');
-      return actor.recordPaymentByAdmin(data.studentId, data.amount, data.reference, data.feeType);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['allPayments'] });
-    },
-  });
-}
-
-export function useCreateCheckoutSession() {
-  const { actor } = useActor();
-
-  return useMutation({
-    mutationFn: async (data: {
-      items: Array<{
-        productName: string;
-        currency: string;
-        quantity: bigint;
-        priceInCents: bigint;
-        productDescription: string;
-      }>;
-      successUrl: string;
-      cancelUrl: string;
-    }) => {
-      if (!actor) throw new Error('Actor not available');
-      const result = await actor.createCheckoutSession(data.items, data.successUrl, data.cancelUrl);
-      const session = JSON.parse(result) as { id: string; url: string };
-      if (!session?.url) throw new Error('Stripe session missing url');
-      return session;
-    },
-  });
-}
-
-export function useGetStripeSessionStatus() {
-  const { actor } = useActor();
-
-  return useMutation({
-    mutationFn: async (sessionId: string) => {
-      if (!actor) throw new Error('Actor not available');
-      return actor.getStripeSessionStatus(sessionId);
-    },
-  });
-}
-
-// ─── hostel ──────────────────────────────────────────────────────────────────
-
-export function useGetAllHostelApplications() {
-  const { actor, isFetching } = useActor();
-
+export function useGetHostelApplications() {
+  const { actor, isFetching: actorFetching } = useActor();
   return useQuery({
-    queryKey: ['allHostelApplications'],
+    queryKey: ['hostelApplications'],
     queryFn: async () => {
       if (!actor) return [];
-      return actor.getAllHostelApplications();
+      return (actor as any).getHostelApplications();
     },
-    enabled: !!actor && !isFetching,
+    enabled: !!actor && !actorFetching,
   });
 }
 
+// Alias used by HostelManagementPage
+export const useGetAllHostelApplications = useGetHostelApplications;
+
+export function useGetMyHostelApplication(studentId: string) {
+  const { actor, isFetching: actorFetching } = useActor();
+  return useQuery({
+    queryKey: ['myHostelApplication', studentId],
+    queryFn: async () => {
+      if (!actor) return null;
+      return (actor as any).getMyHostelApplication(studentId);
+    },
+    enabled: !!actor && !actorFetching && !!studentId,
+  });
+}
+
+export function useSubmitHostelApplication() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: any) => {
+      if (!actor) throw new Error('Actor not available');
+      return (actor as any).submitHostelApplication(data.studentId, data.roomType, data.session);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['hostelApplications'] });
+    },
+  });
+}
+
+// Alias used by HostelApplicationPage
+export const useApplyForHostel = useSubmitHostelApplication;
+
+export function useApproveHostelApplication() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: number) => {
+      if (!actor) throw new Error('Actor not available');
+      return (actor as any).approveHostelApplication(id);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['hostelApplications'] });
+    },
+  });
+}
+
+export function useRejectHostelApplication() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: number) => {
+      if (!actor) throw new Error('Actor not available');
+      return (actor as any).rejectHostelApplication(id);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['hostelApplications'] });
+    },
+  });
+}
+
+// Combined update status alias used by HostelManagementPage
 export function useUpdateHostelApplicationStatus() {
   const { actor } = useActor();
   const queryClient = useQueryClient();
-
   return useMutation({
-    mutationFn: async ({
-      appId,
-      status,
-    }: {
-      appId: bigint;
-      status: Variant_pending_approved_rejected;
-    }) => {
+    mutationFn: async ({ id, status }: { id: number; status: string }) => {
       if (!actor) throw new Error('Actor not available');
-      return actor.updateHostelApplicationStatus(appId, status);
+      if (status === 'approved') {
+        return (actor as any).approveHostelApplication(id);
+      } else {
+        return (actor as any).rejectHostelApplication(id);
+      }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['allHostelApplications'] });
+      queryClient.invalidateQueries({ queryKey: ['hostelApplications'] });
     },
   });
 }
 
-export function useApplyForHostel() {
-  const { actor } = useActor();
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (data: { roomType: string; session: string }) => {
-      if (!actor) throw new Error('Actor not available');
-      return actor.applyForHostel(data.roomType, data.session);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['myHostelApplication'] });
-    },
-  });
-}
-
-export function useGetMyHostelApplication() {
-  const { actor, isFetching } = useActor();
-
-  return useQuery({
-    queryKey: ['myHostelApplication'],
-    queryFn: async () => {
-      if (!actor) return null;
-      return actor.getMyHostelApplication();
-    },
-    enabled: !!actor && !isFetching,
-  });
-}
-
-// ─── results ─────────────────────────────────────────────────────────────────
+// ─── Results Hooks ──────────────────────────────────────────────────────────
 
 export function useGetResults() {
-  const { actor, isFetching } = useActor();
-
+  const { actor, isFetching: actorFetching } = useActor();
   return useQuery({
     queryKey: ['results'],
     queryFn: async () => {
       if (!actor) return [];
-      return actor.getResults();
+      return (actor as any).getResults();
     },
-    enabled: !!actor && !isFetching,
+    enabled: !!actor && !actorFetching,
   });
 }
 
-export function useGetAllResults() {
-  const { actor, isFetching } = useActor();
+// Alias used by ResultsManagementPage, StaffDashboard
+export const useGetAllResults = useGetResults;
 
+export function useGetStudentResults(studentId: string) {
+  const { actor, isFetching: actorFetching } = useActor();
   return useQuery({
-    queryKey: ['allResults'],
+    queryKey: ['results', studentId],
     queryFn: async () => {
       if (!actor) return [];
-      return actor.getAllResults();
+      return (actor as any).getStudentResults(studentId);
     },
-    enabled: !!actor && !isFetching,
-  });
-}
-
-export function useAddResult() {
-  const { actor } = useActor();
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (data: {
-      studentId: string;
-      courseId: bigint;
-      semester: string;
-      grade: string;
-      score: bigint;
-    }) => {
-      if (!actor) throw new Error('Actor not available');
-      return actor.addResult(data.studentId, data.courseId, data.semester, data.grade, data.score);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['allResults'] });
-    },
+    enabled: !!actor && !actorFetching && !!studentId,
   });
 }
 
 export function useGetResultsForStudent() {
   const { actor } = useActor();
-
   return useMutation({
     mutationFn: async (studentId: string) => {
       if (!actor) throw new Error('Actor not available');
-      return actor.getResultsForStudent(studentId);
+      return (actor as any).getStudentResults(studentId);
     },
   });
 }
 
-// ─── students ────────────────────────────────────────────────────────────────
-
-export function useGetAllStudents() {
-  const { actor, isFetching } = useActor();
-
-  return useQuery({
-    queryKey: ['allStudents'],
-    queryFn: async () => {
-      if (!actor) return [];
-      return actor.getAllStudents();
-    },
-    enabled: !!actor && !isFetching,
-  });
-}
-
-export function useAddStudentProfile() {
+export function usePostResult() {
   const { actor } = useActor();
   const queryClient = useQueryClient();
-
   return useMutation({
-    mutationFn: async (data: { name: string; idNumber: string; email: string }) => {
+    mutationFn: async (data: any) => {
       if (!actor) throw new Error('Actor not available');
-      return actor.addStudentProfile(data.name, data.idNumber, data.email);
+      return (actor as any).postResult(data.studentId, data.courseId, data.semester, data.grade, data.score);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['allStudents'] });
+      queryClient.invalidateQueries({ queryKey: ['results'] });
     },
   });
 }
 
-// ─── announcements ───────────────────────────────────────────────────────────
+// Alias used by ResultsManagementPage
+export const useAddResult = usePostResult;
 
-export function useGetAnnouncements(role: string) {
-  const { actor, isFetching } = useActor();
+// ─── Announcement Hooks ─────────────────────────────────────────────────────
 
+export function useGetAnnouncements() {
+  const { actor, isFetching: actorFetching } = useActor();
   return useQuery({
-    queryKey: ['announcements', role],
+    queryKey: ['announcements'],
     queryFn: async () => {
       if (!actor) return [];
-      return actor.getAnnouncements(role);
+      return (actor as any).getAnnouncements();
     },
-    enabled: !!actor && !isFetching,
+    enabled: !!actor && !actorFetching,
   });
 }
 
 export function useSendAnnouncement() {
   const { actor } = useActor();
   const queryClient = useQueryClient();
-
   return useMutation({
-    mutationFn: async (data: { content: string; targetRole: string }) => {
+    mutationFn: async (data: any) => {
       if (!actor) throw new Error('Actor not available');
-      return actor.sendAnnouncement(data.content, data.targetRole);
+      return (actor as any).sendAnnouncement(data.content, data.targetRole);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['announcements'] });
@@ -526,70 +568,164 @@ export function useSendAnnouncement() {
   });
 }
 
-// ─── course registration ─────────────────────────────────────────────────────
+// ─── Student Profile Hooks ──────────────────────────────────────────────────
 
-export function useGetRegisteredCourses() {
-  const { actor, isFetching } = useActor();
-
+export function useGetStudentProfiles() {
+  const { actor, isFetching: actorFetching } = useActor();
   return useQuery({
-    queryKey: ['registeredCourses'],
+    queryKey: ['studentProfiles'],
     queryFn: async () => {
       if (!actor) return [];
-      return actor.getRegisteredCourses();
+      return (actor as any).getStudentProfiles();
     },
-    enabled: !!actor && !isFetching,
+    enabled: !!actor && !actorFetching,
+  });
+}
+
+// Alias used by StudentManagementPage, ResultsManagementPage, StaffDashboard
+export const useGetAllStudents = useGetStudentProfiles;
+
+export function useAddStudentProfile() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: any) => {
+      if (!actor) throw new Error('Actor not available');
+      return (actor as any).addStudentProfile(
+        data.name,
+        data.idNumber,
+        data.email,
+        data.programme,
+        null,
+        null,
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['studentProfiles'] });
+    },
+  });
+}
+
+// ─── Admin Hooks ────────────────────────────────────────────────────────────
+
+export function useBootstrapAdmin() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: any) => {
+      if (!actor) throw new Error('Actor not available');
+      return (actor as any).bootstrapAdmin(data.name, data.staffId, data.email);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['currentUserProfile'] });
+    },
+  });
+}
+
+// ─── Parent Hooks ───────────────────────────────────────────────────────────
+
+export function useLinkParentToStudent() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ parentId, studentId }: { parentId: string; studentId: string }) => {
+      if (!actor) throw new Error('Actor not available');
+      return (actor as any).linkParentToStudent(parentId, studentId);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['currentUserProfile'] });
+    },
+  });
+}
+
+// ─── Fee Check Hooks ────────────────────────────────────────────────────────
+
+export function useCheckUnpaidFees(studentId: string) {
+  const { actor, isFetching: actorFetching } = useActor();
+  return useQuery({
+    queryKey: ['unpaidFees', studentId],
+    queryFn: async () => {
+      if (!actor) return [];
+      return (actor as any).checkUnpaidFees(studentId);
+    },
+    enabled: !!actor && !actorFetching && !!studentId,
+  });
+}
+
+// ─── Course Registration Hooks ──────────────────────────────────────────────
+
+export function useGetRegisteredCourses(studentId: string) {
+  const { actor, isFetching: actorFetching } = useActor();
+  return useQuery({
+    queryKey: ['registeredCourses', studentId],
+    queryFn: async () => {
+      if (!actor) return [];
+      return (actor as any).getRegisteredCourses(studentId);
+    },
+    enabled: !!actor && !actorFetching && !!studentId,
   });
 }
 
 export function useRegisterCourse() {
   const { actor } = useActor();
   const queryClient = useQueryClient();
-
   return useMutation({
-    mutationFn: async (courseId: bigint) => {
+    mutationFn: async ({ studentId, courseId }: { studentId: string; courseId: number }) => {
       if (!actor) throw new Error('Actor not available');
-      return actor.registerCourse(courseId);
+      return (actor as any).registerCourse(studentId, courseId);
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['registeredCourses'] });
+    onSuccess: (_data: any, variables: { studentId: string; courseId: number }) => {
+      queryClient.invalidateQueries({ queryKey: ['registeredCourses', variables.studentId] });
     },
   });
 }
 
-export function useDeregisterCourse() {
+// Alias used by CourseRegistrationPage
+export const useDeregisterCourse = function useDeregisterCourse() {
   const { actor } = useActor();
   const queryClient = useQueryClient();
-
   return useMutation({
-    mutationFn: async (courseId: bigint) => {
+    mutationFn: async ({ studentId, courseId }: { studentId: string; courseId: number }) => {
       if (!actor) throw new Error('Actor not available');
-      return actor.deregisterCourse(courseId);
+      return (actor as any).unregisterCourse(studentId, courseId);
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['registeredCourses'] });
+    onSuccess: (_data: any, variables: { studentId: string; courseId: number }) => {
+      queryClient.invalidateQueries({ queryKey: ['registeredCourses', variables.studentId] });
+    },
+  });
+};
+
+export function useUnregisterCourse() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ studentId, courseId }: { studentId: string; courseId: number }) => {
+      if (!actor) throw new Error('Actor not available');
+      return (actor as any).unregisterCourse(studentId, courseId);
+    },
+    onSuccess: (_data: any, variables: { studentId: string; courseId: number }) => {
+      queryClient.invalidateQueries({ queryKey: ['registeredCourses', variables.studentId] });
     },
   });
 }
 
-// ─── stripe config ───────────────────────────────────────────────────────────
+// ─── Stripe Hooks ───────────────────────────────────────────────────────────
 
 export function useIsStripeConfigured() {
-  const { actor, isFetching } = useActor();
-
-  return useQuery({
+  const { actor, isFetching: actorFetching } = useActor();
+  return useQuery<boolean>({
     queryKey: ['stripeConfigured'],
     queryFn: async () => {
       if (!actor) return false;
       return actor.isStripeConfigured();
     },
-    enabled: !!actor && !isFetching,
+    enabled: !!actor && !actorFetching,
   });
 }
 
 export function useSetStripeConfiguration() {
   const { actor } = useActor();
   const queryClient = useQueryClient();
-
   return useMutation({
     mutationFn: async (config: { secretKey: string; allowedCountries: string[] }) => {
       if (!actor) throw new Error('Actor not available');
@@ -601,75 +737,33 @@ export function useSetStripeConfiguration() {
   });
 }
 
-// ─── user management ─────────────────────────────────────────────────────────
-
-export function useGetAllUserProfiles() {
-  const { actor, isFetching } = useActor();
-
-  return useQuery({
-    queryKey: ['allUserProfiles'],
-    queryFn: async () => {
-      if (!actor) return [];
-      return actor.getAllUserProfiles();
-    },
-    enabled: !!actor && !isFetching,
-  });
-}
-
-export function useAssignAccessRole() {
+export function useGetStripeSessionStatus() {
   const { actor } = useActor();
-  const queryClient = useQueryClient();
-
   return useMutation({
-    mutationFn: async (data: { user: import('@dfinity/principal').Principal; role: UserRole__1 }) => {
+    mutationFn: async (sessionId: string) => {
       if (!actor) throw new Error('Actor not available');
-      return actor.assignAccessRole(data.user, data.role);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['allUserProfiles'] });
+      return actor.getStripeSessionStatus(sessionId);
     },
   });
 }
 
-// ─── aggregated data ─────────────────────────────────────────────────────────
-
-export function useGetAggregatedStudentData() {
-  const { actor, isFetching } = useActor();
-
-  return useQuery({
-    queryKey: ['aggregatedStudentData'],
-    queryFn: async () => {
-      if (!actor) return [[], []] as [import('../backend').Result[], import('../backend').PaymentRecord[]];
-      return actor.getAggregatedStudentData();
-    },
-    enabled: !!actor && !isFetching,
-  });
-}
-
-export function useCheckUnpaidFees() {
-  const { actor, isFetching } = useActor();
-
-  return useQuery({
-    queryKey: ['unpaidFees'],
-    queryFn: async () => {
-      if (!actor) return [];
-      return actor.checkUnpaidFees();
-    },
-    enabled: !!actor && !isFetching,
-  });
-}
-
-export function useLinkParentToStudent() {
+export function useCreateCheckoutSession() {
   const { actor } = useActor();
-  const queryClient = useQueryClient();
-
   return useMutation({
-    mutationFn: async (studentId: string) => {
+    mutationFn: async ({
+      items,
+      successUrl,
+      cancelUrl,
+    }: {
+      items: any[];
+      successUrl: string;
+      cancelUrl: string;
+    }) => {
       if (!actor) throw new Error('Actor not available');
-      return actor.linkParentToStudent(studentId);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['currentUserProfile'] });
+      const result = await actor.createCheckoutSession(items, successUrl, cancelUrl);
+      const session = JSON.parse(result);
+      if (!session?.url) throw new Error('Stripe session missing url');
+      return session;
     },
   });
 }

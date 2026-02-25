@@ -16,6 +16,14 @@ interface ProfileSetupModalProps {
   defaultRole?: UserRole;
 }
 
+const LEVEL_OPTIONS = [
+  { value: '100', label: '100 Level' },
+  { value: '200', label: '200 Level' },
+  { value: '300', label: '300 Level' },
+  { value: '400', label: '400 Level' },
+  { value: '500', label: '500 Level' },
+];
+
 export default function ProfileSetupModal({ open, onComplete, defaultRole }: ProfileSetupModalProps) {
   const { identity } = useInternetIdentity();
   const saveProfile = useSaveCallerUserProfile();
@@ -24,6 +32,8 @@ export default function ProfileSetupModal({ open, onComplete, defaultRole }: Pro
   const [role, setRole] = useState<UserRole>(defaultRole ?? UserRole.student);
   const [idNumber, setIdNumber] = useState('');
   const [email, setEmail] = useState('');
+  const [department, setDepartment] = useState('');
+  const [studentLevel, setStudentLevel] = useState('100');
 
   // Sync role when defaultRole changes (e.g., navigating between role login pages)
   useEffect(() => {
@@ -31,6 +41,8 @@ export default function ProfileSetupModal({ open, onComplete, defaultRole }: Pro
       setRole(defaultRole);
     }
   }, [defaultRole]);
+
+  const isStudent = role === UserRole.student;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,6 +54,10 @@ export default function ProfileSetupModal({ open, onComplete, defaultRole }: Pro
       toast.error('Please fill in all fields.');
       return;
     }
+    if (isStudent && !department) {
+      toast.error('Please enter your department.');
+      return;
+    }
     try {
       await saveProfile.mutateAsync({
         principal: identity.getPrincipal(),
@@ -49,6 +65,8 @@ export default function ProfileSetupModal({ open, onComplete, defaultRole }: Pro
         role,
         idNumber,
         email,
+        department: isStudent ? department : undefined,
+        level: isStudent ? BigInt(studentLevel) : undefined,
       });
       toast.success('Profile created successfully!');
       onComplete?.();
@@ -72,6 +90,7 @@ export default function ProfileSetupModal({ open, onComplete, defaultRole }: Pro
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 mt-2">
+          {/* Full Name */}
           <div className="space-y-2">
             <Label htmlFor="profileName">Full Name</Label>
             <Input
@@ -82,6 +101,8 @@ export default function ProfileSetupModal({ open, onComplete, defaultRole }: Pro
               disabled={saveProfile.isPending}
             />
           </div>
+
+          {/* Role */}
           <div className="space-y-2">
             <Label>Role</Label>
             {isRoleLocked ? (
@@ -107,6 +128,8 @@ export default function ProfileSetupModal({ open, onComplete, defaultRole }: Pro
               </Select>
             )}
           </div>
+
+          {/* ID Number */}
           <div className="space-y-2">
             <Label htmlFor="profileIdNumber">
               {role === UserRole.student
@@ -125,6 +148,8 @@ export default function ProfileSetupModal({ open, onComplete, defaultRole }: Pro
               disabled={saveProfile.isPending}
             />
           </div>
+
+          {/* Email */}
           <div className="space-y-2">
             <Label htmlFor="profileEmail">Email Address</Label>
             <Input
@@ -132,11 +157,54 @@ export default function ProfileSetupModal({ open, onComplete, defaultRole }: Pro
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="Enter your email"
+              placeholder="Enter your email address"
               disabled={saveProfile.isPending}
             />
           </div>
-          <Button type="submit" className="w-full" disabled={saveProfile.isPending}>
+
+          {/* Department — students only */}
+          {isStudent && (
+            <div className="space-y-2">
+              <Label htmlFor="profileDepartment">Department</Label>
+              <Input
+                id="profileDepartment"
+                value={department}
+                onChange={(e) => setDepartment(e.target.value)}
+                placeholder="e.g. Computer Science"
+                disabled={saveProfile.isPending}
+              />
+            </div>
+          )}
+
+          {/* Level — students only */}
+          {isStudent && (
+            <div className="space-y-2">
+              <Label htmlFor="profileLevel">Level</Label>
+              <Select
+                value={studentLevel}
+                onValueChange={setStudentLevel}
+                disabled={saveProfile.isPending}
+              >
+                <SelectTrigger id="profileLevel">
+                  <SelectValue placeholder="Select your level" />
+                </SelectTrigger>
+                <SelectContent>
+                  {LEVEL_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {/* Submit */}
+          <Button
+            type="submit"
+            className="w-full"
+            disabled={saveProfile.isPending}
+          >
             {saveProfile.isPending ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin mr-2" />

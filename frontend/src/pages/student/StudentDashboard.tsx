@@ -1,6 +1,11 @@
 import React from 'react';
 import { useNavigate } from '@tanstack/react-router';
-import { useGetCallerUserProfile, useGetCourses, useGetResults, useCheckUnpaidFees } from '../../hooks/useQueries';
+import {
+  useGetCallerUserProfile,
+  useGetCourses,
+  useGetResults,
+  useCheckUnpaidFees,
+} from '../../hooks/useQueries';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { Skeleton } from '../../components/ui/skeleton';
@@ -49,13 +54,14 @@ export default function StudentDashboard() {
 
   const { data: courses = [] } = useGetCourses();
   const { data: results = [] } = useGetResults();
-  const { data: unpaidFees = [] } = useCheckUnpaidFees();
+  // Pass studentId only when available; hook is disabled when empty string
+  const studentId = userProfile?.idNumber ?? '';
+  const { data: unpaidFees = [] } = useCheckUnpaidFees(studentId);
 
   // Loading state
   if (profileLoading || !profileFetched) {
     return (
       <div className="flex min-h-[calc(100vh-4rem)]">
-        {/* Sidebar skeleton */}
         <aside className="hidden md:flex w-64 flex-col border-r border-border bg-card p-4 gap-2">
           <Skeleton className="h-6 w-32 mb-4" />
           {Array.from({ length: 7 }).map((_, i) => (
@@ -101,9 +107,9 @@ export default function StudentDashboard() {
 
   if (!userProfile) return null;
 
-  const registeredCount = courses.length;
-  const resultsCount = results.length;
-  const unpaidCount = unpaidFees.length;
+  const registeredCount = (courses as any[]).length;
+  const resultsCount = (results as any[]).length;
+  const unpaidCount = (unpaidFees as any[]).length;
 
   return (
     <div className="flex min-h-[calc(100vh-4rem)]">
@@ -117,7 +123,7 @@ export default function StudentDashboard() {
           return (
             <button
               key={link.href}
-              onClick={() => navigate({ to: link.href })}
+              onClick={() => navigate({ to: link.href as any })}
               className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors text-left"
             >
               <Icon className="h-4 w-4 shrink-0" />
@@ -162,7 +168,9 @@ export default function StudentDashboard() {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Registered Courses</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Registered Courses
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold text-primary">{registeredCount}</div>
@@ -170,7 +178,9 @@ export default function StudentDashboard() {
           </Card>
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Results Available</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Results Available
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold text-primary">{resultsCount}</div>
@@ -178,10 +188,16 @@ export default function StudentDashboard() {
           </Card>
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Unpaid Fees</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Unpaid Fees
+              </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className={`text-3xl font-bold ${unpaidCount > 0 ? 'text-destructive' : 'text-primary'}`}>
+              <div
+                className={`text-3xl font-bold ${
+                  unpaidCount > 0 ? 'text-destructive' : 'text-primary'
+                }`}
+              >
                 {unpaidCount}
               </div>
             </CardContent>
@@ -197,7 +213,7 @@ export default function StudentDashboard() {
               return (
                 <button
                   key={card.href}
-                  onClick={() => navigate({ to: card.href })}
+                  onClick={() => navigate({ to: card.href as any })}
                   className="group flex flex-col items-start gap-2 p-4 rounded-xl border border-border bg-card hover:bg-accent hover:border-primary/30 transition-all text-left"
                 >
                   <div className="p-2 rounded-lg bg-primary/10 group-hover:bg-primary/20 transition-colors">

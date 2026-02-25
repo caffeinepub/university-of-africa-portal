@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.0.0",
-  "projectStateVersion": 19,
-  "summary": "Building a full university portal (similar to University of Africa, Toru-Orua) on the Internet Computer stack with React + Motoko + Internet Identity + Stripe. Includes role-based authentication (Admin, Student, Staff, Parent), public homepage, admissions module, student dashboard, parent portal, admin panel, hostel application, and payment integration.",
+  "projectStateVersion": 23,
+  "summary": "Building a full university portal (similar to University of Africa, Toru-Orua) on the Internet Computer stack with React + Motoko + Internet Identity + Stripe. Includes role-based authentication (Admin, Student, Staff, Parent), public homepage, admissions module, student dashboard, parent portal, admin panel, hostel application, and payment integration. A new portal access application system is being added: users apply for portal access by role, receive generated login credentials (Staff ID, Matriculation Number, Parent ID, or Admin ID + password), and log in via a dedicated login page with the school logo.",
   "architectural_notes": [
     "Backend: Motoko on Internet Computer (IC) canisters",
     "Frontend: React + TypeScript + Vite",
@@ -11,7 +11,8 @@
     "Exams & Records is a separate portal/site for results upload, distinct from the main university portal",
     "Protected navigation items must be conditionally rendered based on authentication state — unauthenticated users must never see role-specific menu options",
     "Backend admin role checks must verify the caller's principal against the stored admin profile — mismatches cause false 'Unauthorized' errors even for valid admins",
-    "Role-specific login entry points: each portal category (Admin, Staff, Student, Parent) has a dedicated pre-login landing/login page that encodes the intended role — after Internet Identity authentication the user is automatically associated with that role"
+    "Role-specific login entry points: each portal category (Admin, Staff, Student, Parent) has a dedicated pre-login landing/login page that encodes the intended role — after Internet Identity authentication the user is automatically associated with that role",
+    "Course registration is department/level-driven: courses are pre-assigned to a department+level combination and auto-populated for students in that department/level; students can opt out or add carryover courses"
   ],
   "known_issues": [
     "Course addition is broken — users cannot add courses; needs full fix across admin panel and course registration",
@@ -221,6 +222,78 @@
         "REQ-36"
       ],
       "version": 1
+    },
+    {
+      "id": "feature-in-the-frontend-usequeries-ts-add-a-usegetcoursesfordepartmentandlevel-department-level-react-query-hook-that-calls-the-backend-getcoursesfordepartmentandlevel-function-also-add-a-usegetstudentregisteredcourses-hook-if-not-already-present-that-fetches-the-student-s-currently-registered-courses-from-the-backend",
+      "title": "In the frontend useQueries.ts, add a useGetCoursesForDepartmentAndLevel(department, level) React Query hook that calls the backend getCoursesForDepartmentAndLevel function. Also add a useGetStudentRegisteredCourses hook (if not already present) that fetches the student's currently registered courses from the backend.",
+      "reqIds": [
+        "REQ-40"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-rewrite-the-courseregistrationpage-frontend-src-pages-student-courseregistrationpage-tsx-so-that-it-automatically-loads-all-courses-assigned-to-the-authenticated-student-s-department-and-level-from-the-backend-without-any-manual-search-required-for-each-course-displayed-show-the-course-code-course-name-semester-and-credit-units-prominently-each-course-row-must-have-a-register-or-remove-toggle-button-reflecting-the-student-s-current-registration-status-fetched-from-the-backend-registering-or-removing-a-course-must-call-the-backend-registercourse-deregistercourse-functions-and-immediately-refresh-the-registration-state-group-courses-by-semester-first-semester-second-semester",
+      "title": "Rewrite the CourseRegistrationPage (frontend/src/pages/student/CourseRegistrationPage.tsx) so that it automatically loads all courses assigned to the authenticated student's department and level from the backend without any manual search required. For each course displayed, show the course code, course name, semester, and credit units prominently. Each course row must have a 'Register' or 'Remove' toggle button reflecting the student's current registration status (fetched from the backend). Registering or removing a course must call the backend registerCourse / deregisterCourse functions and immediately refresh the registration state. Group courses by semester (First Semester / Second Semester).",
+      "reqIds": [
+        "REQ-41"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-update-the-admin-programme-management-page-programmemanagementpage-add-course-form-to-include-input-fields-for-department-text-and-level-number-selector-100-200-300-400-500-and-credit-units-number-these-fields-must-be-submitted-and-persisted-to-the-backend-when-a-new-course-is-added",
+      "title": "Update the Admin Programme Management page (ProgrammeManagementPage) add-course form to include input fields for 'Department' (text) and 'Level' (number selector: 100, 200, 300, 400, 500) and 'Credit Units' (number). These fields must be submitted and persisted to the backend when a new course is added.",
+      "reqIds": [
+        "REQ-42"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-update-the-profilesetupmodal-or-the-student-profile-registration-flow-to-include-department-and-level-fields-when-a-user-registers-with-the-student-role-department-should-be-a-text-field-e-g-computer-science-and-level-should-be-a-dropdown-100-200-300-400-500-these-fields-must-be-saved-as-part-of-the-student-s-profile-in-the-backend",
+      "title": "Update the ProfileSetupModal (or the student profile registration flow) to include Department and Level fields when a user registers with the Student role. Department should be a text field (e.g., 'Computer Science') and Level should be a dropdown (100, 200, 300, 400, 500). These fields must be saved as part of the student's profile in the backend.",
+      "reqIds": [
+        "REQ-43"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-create-a-public-facing-portal-access-application-page-at-apply-frontend-src-pages-portalaccessapplicationpage-tsx-the-page-must-display-the-university-logo-and-heading-apply-for-portal-access-it-must-render-a-single-step-form-with-fields-full-name-text-email-address-text-role-dropdown-student-staff-parent-admin-and-programme-department-text-labelled-contextually-based-on-role-programme-for-students-department-for-staff-admin-ward-s-programme-for-parents-on-submission-call-the-submitportalaccessapplication-backend-function-via-a-react-query-mutation-on-success-display-a-confirmation-message-your-application-has-been-submitted-you-will-receive-your-login-credentials-once-your-access-is-approved-by-the-administrator-on-error-display-a-human-readable-inline-error-message-the-page-must-use-the-existing-deep-navy-and-gold-academic-theme",
+      "title": "Create a public-facing Portal Access Application page at `/apply` (`frontend/src/pages/PortalAccessApplicationPage.tsx`). The page must display the university logo and heading 'Apply for Portal Access'. It must render a single-step form with fields: Full Name (text), Email Address (text), Role (dropdown: Student, Staff, Parent, Admin), and Programme/Department (text, labelled contextually based on role — 'Programme' for students, 'Department' for staff/admin, 'Ward's Programme' for parents). On submission, call the `submitPortalAccessApplication` backend function via a React Query mutation. On success, display a confirmation message: 'Your application has been submitted. You will receive your login credentials once your access is approved by the administrator.' On error, display a human-readable inline error message. The page must use the existing deep navy and gold academic theme.",
+      "reqIds": [
+        "REQ-45"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-an-access-applications-section-to-the-admin-panel-frontend-src-pages-admin-accessapplicationspage-tsx-wrapped-with-roleguard-admin-role-this-page-must-fetch-all-portal-access-applications-via-getportalaccessapplications-and-display-them-in-a-table-with-columns-applicant-name-email-role-programme-department-submitted-date-status-badge-and-an-actions-column-for-pending-applications-show-approve-and-reject-buttons-clicking-approve-calls-approveportalaccessapplication-and-on-success-shows-a-modal-toast-displaying-the-generated-role-id-and-password-so-the-admin-can-communicate-these-credentials-to-the-applicant-e-g-student-id-matric-2024-0001-password-xk7-mp2q-clicking-reject-calls-rejectportalaccessapplication-after-any-action-immediately-invalidate-and-refetch-the-applications-list-query-add-a-link-to-this-page-in-the-admin-dashboard-sidebar-under-the-label-access-applications",
+      "title": "Add an 'Access Applications' section to the Admin Panel (`frontend/src/pages/admin/AccessApplicationsPage.tsx`) wrapped with RoleGuard (admin role). This page must fetch all portal access applications via `getPortalAccessApplications` and display them in a table with columns: Applicant Name, Email, Role, Programme/Department, Submitted Date, Status (badge), and an Actions column. For pending applications, show 'Approve' and 'Reject' buttons. Clicking 'Approve' calls `approvePortalAccessApplication` and on success shows a modal/toast displaying the generated Role ID and Password so the admin can communicate these credentials to the applicant (e.g., 'Student ID: MATRIC/2024/0001 | Password: Xk7#mP2q'). Clicking 'Reject' calls `rejectPortalAccessApplication`. After any action, immediately invalidate and refetch the applications list query. Add a link to this page in the Admin Dashboard sidebar under the label 'Access Applications'.",
+      "reqIds": [
+        "REQ-46"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-create-a-dedicated-id-password-login-page-at-id-login-frontend-src-pages-idpasswordloginpage-tsx-this-page-must-prominently-display-the-university-logo-from-assets-generated-university-logo-dim-200x200-png-or-the-existing-logo-asset-the-university-name-and-a-login-form-with-two-fields-your-id-placeholder-text-changes-based-on-a-role-selector-enter-matriculation-number-for-students-enter-staff-id-for-staff-enter-parent-id-for-parents-enter-admin-id-for-admins-and-password-include-a-role-selector-student-staff-admin-parent-above-the-id-field-so-the-placeholder-updates-dynamically-on-form-submission-call-the-loginwithidandpassword-backend-function-on-success-store-the-returned-userprofile-in-react-query-state-context-and-redirect-the-user-to-their-role-specific-dashboard-student-staff-admin-or-parent-on-failure-display-a-clear-inline-error-invalid-id-or-password-please-check-your-credentials-or-contact-the-administrator-the-page-must-use-the-deep-navy-and-gold-academic-theme-and-be-fully-responsive",
+      "title": "Create a dedicated ID/Password login page at `/id-login` (`frontend/src/pages/IdPasswordLoginPage.tsx`). This page must prominently display the university logo (from `/assets/generated/university-logo.dim_200x200.png` or the existing logo asset), the university name, and a login form with two fields: 'Your ID' (placeholder text changes based on a role selector: 'Enter Matriculation Number' for students, 'Enter Staff ID' for staff, 'Enter Parent ID' for parents, 'Enter Admin ID' for admins) and 'Password'. Include a Role selector (Student, Staff, Admin, Parent) above the ID field so the placeholder updates dynamically. On form submission, call the `loginWithIdAndPassword` backend function. On success, store the returned UserProfile in React Query state/context and redirect the user to their role-specific dashboard (`/student`, `/staff`, `/admin`, or `/parent`). On failure, display a clear inline error: 'Invalid ID or password. Please check your credentials or contact the administrator.' The page must use the deep navy and gold academic theme and be fully responsive.",
+      "reqIds": [
+        "REQ-47"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-an-apply-for-portal-access-link-and-an-id-password-login-link-to-the-public-navigation-and-the-portal-selection-page-portal-on-the-public-homepage-homepage-tsx-add-a-visible-call-to-action-banner-or-card-section-titled-new-user-apply-for-portal-access-with-a-button-linking-to-apply-and-a-secondary-link-already-have-credentials-login-with-your-id-linking-to-id-login-on-the-portal-selection-page-portalselectionpage-tsx-add-a-footer-row-beneath-the-four-portal-cards-with-these-two-links-in-the-main-navigation-component-add-an-apply-for-access-link-and-a-id-login-link-in-the-unauthenticated-public-navigation-links",
+      "title": "Add an 'Apply for Portal Access' link and an 'ID/Password Login' link to the public navigation and the Portal Selection page (`/portal`). On the public homepage (`HomePage.tsx`), add a visible call-to-action banner or card section titled 'New User? Apply for Portal Access' with a button linking to `/apply` and a secondary link 'Already have credentials? Login with your ID' linking to `/id-login`. On the Portal Selection page (`PortalSelectionPage.tsx`), add a footer row beneath the four portal cards with these two links. In the main Navigation component, add an 'Apply for Access' link and a 'ID Login' link in the unauthenticated public navigation links.",
+      "reqIds": [
+        "REQ-48"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-react-query-hooks-in-frontend-src-hooks-usequeries-ts-for-the-new-portal-access-application-backend-functions-usesubmitportalaccessapplication-mutation-calling-submitportalaccessapplication-usegetportalaccessapplications-query-calling-getportalaccessapplications-for-admin-use-useapproveportalaccessapplication-mutation-calling-approveportalaccessapplication-userejectportalaccessapplication-mutation-calling-rejectportalaccessapplication-usegetmyportalaccessapplication-email-query-calling-getmyportalaccessapplication-and-useloginwithidandpassword-mutation-calling-loginwithidandpassword-each-hook-must-follow-the-existing-patterns-in-usequeries-ts-using-the-authenticated-actor-for-admin-only-mutations-and-the-anonymous-actor-for-public-queries-mutations",
+      "title": "Add React Query hooks in `frontend/src/hooks/useQueries.ts` for the new portal access application backend functions: `useSubmitPortalAccessApplication` (mutation calling `submitPortalAccessApplication`), `useGetPortalAccessApplications` (query calling `getPortalAccessApplications`, for admin use), `useApprovePortalAccessApplication` (mutation calling `approvePortalAccessApplication`), `useRejectPortalAccessApplication` (mutation calling `rejectPortalAccessApplication`), `useGetMyPortalAccessApplication(email)` (query calling `getMyPortalAccessApplication`), and `useLoginWithIdAndPassword` (mutation calling `loginWithIdAndPassword`). Each hook must follow the existing patterns in `useQueries.ts` — using the authenticated actor for admin-only mutations and the anonymous actor for public queries/mutations.",
+      "reqIds": [
+        "REQ-49"
+      ],
+      "version": 1
     }
   ],
   "new_feature_requests": [
@@ -418,6 +491,50 @@
       "id": "AR-29",
       "summary": "Add role-selection landing pages: when a visitor clicks a portal category (Admin, Staff, Student, Parent), route them to a dedicated login page for that role so that after Internet Identity login they are automatically registered/recognised under the selected role without needing to manually choose their role post-login",
       "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-30",
+      "summary": "Course registration should automatically display all courses assigned to a student's department and level (e.g., Computer Science Level 100) on the course registration dashboard. Students can then remove or register for individual courses. Each course must show credit units. Support carryover/outstanding courses from previous semesters.",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-31",
+      "summary": "In the Motoko backend, extend the Course data type to include a 'department' field (e.g., 'Computer Science'), a 'level' field (e.g., 100, 200, 300, 400), and a 'creditUnits' field (integer). Update the addCourse function and any related course input types to accept and store these new fields. Ensure getCourses returns them in all responses.",
+      "reqIds": [
+        "REQ-37"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-32",
+      "summary": "In the Motoko backend, add a getCoursesForDepartmentAndLevel(department: Text, level: Nat) query function that returns all courses whose department and level fields match the given arguments. This is used to automatically populate the course registration list for a student based on their enrolled department and level.",
+      "reqIds": [
+        "REQ-38"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-33",
+      "summary": "Update the student profile data type and saveCallerUserProfile function in the Motoko backend to store 'department' (e.g., 'Computer Science') and 'level' (e.g., 100) fields on student profiles. These fields will be used to automatically determine which courses to display on the student's course registration page.",
+      "reqIds": [
+        "REQ-39"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-34",
+      "summary": "Portal access application system: users apply for access by role (Student/Staff/Parent/Admin), system generates login credentials (role-specific ID + password), and a dedicated login page with school logo allows ID+password login to the respective dashboard.",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-35",
+      "summary": "In the Motoko backend, add a new stable data type `PortalAccessApplication` containing fields: applicantName (Text), email (Text), role (#student | #staff | #parent | #admin), programmeOrDepartment (Text, optional context), submittedAt (Int timestamp), status (#pending | #approved | #rejected), and generatedId (Text, the role-specific ID assigned on approval, e.g. matriculation number for students, staff ID for staff, parent ID for parents, admin ID for admins). Add a `generatedPassword` (Text) field to store the hashed or plaintext generated password. Store applications in a stable HashMap keyed by a unique application ID (Text). Implement the following backend functions: `submitPortalAccessApplication(name, email, role, programme) -> Result<Text, Text>` (returns assigned application reference), `approvePortalAccessApplication(appId) -> Result<{generatedId: Text; password: Text}, Text>` (admin-only, generates a role-specific ID and random password, stores them, marks status approved), `rejectPortalAccessApplication(appId) -> Result<(), Text>` (admin-only), `getPortalAccessApplications() -> [PortalAccessApplication]` (admin-only), `getMyPortalAccessApplication(email: Text) -> ?PortalAccessApplication` (public query by email), and `loginWithIdAndPassword(roleId: Text, password: Text) -> Result<UserProfile, Text>` (validates credentials and returns the associated profile).",
+      "reqIds": [
+        "REQ-44"
+      ],
       "status": "pending"
     }
   ],

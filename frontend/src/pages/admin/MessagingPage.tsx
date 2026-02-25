@@ -1,173 +1,125 @@
 import React, { useState } from 'react';
+import { useNavigate } from '@tanstack/react-router';
 import { toast } from 'sonner';
-import { useActor } from '../../hooks/useActor';
-import { useSendAnnouncement, extractErrorMessage } from '../../hooks/useQueries';
-import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
-import { Button } from '../../components/ui/button';
-import { Label } from '../../components/ui/label';
-import { Textarea } from '../../components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
-import { Loader2, Send, MessageSquare, Clock } from 'lucide-react';
+import { useSendAnnouncement } from '../../hooks/useQueries';
 import RoleGuard from '../../components/auth/RoleGuard';
-import { UserRole } from '../../backend';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ArrowLeft, MessageSquare, Send } from 'lucide-react';
+import { useActor } from '../../hooks/useActor';
 
 interface SentMessage {
   content: string;
   targetRole: string;
-  timestamp: Date;
+  timestamp: number;
 }
 
 function MessagingContent() {
-  const { actor, isFetching: actorFetching } = useActor();
+  const navigate = useNavigate();
+  const { isFetching: actorFetching } = useActor();
   const sendAnnouncement = useSendAnnouncement();
 
   const [content, setContent] = useState('');
   const [targetRole, setTargetRole] = useState('all');
   const [sentMessages, setSentMessages] = useState<SentMessage[]>([]);
 
-  const isActorReady = !!actor && !actorFetching;
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isActorReady) {
-      toast.error('Please wait — connecting to the server...');
-      return;
-    }
-    if (!content.trim()) {
-      toast.error('Please enter a message.');
-      return;
-    }
     try {
       await sendAnnouncement.mutateAsync({ content, targetRole });
-      toast.success('Announcement sent successfully!');
-      setSentMessages((prev) => [
-        { content, targetRole, timestamp: new Date() },
-        ...prev,
-      ]);
+      toast.success('Announcement sent successfully');
+      setSentMessages(prev => [{ content, targetRole, timestamp: Date.now() }, ...prev]);
       setContent('');
-      setTargetRole('all');
     } catch (err) {
-      toast.error(extractErrorMessage(err));
-    }
-  };
-
-  const getRoleLabel = (role: string) => {
-    switch (role) {
-      case 'all': return 'All Users';
-      case 'student': return 'Students';
-      case 'staff': return 'Staff';
-      case 'parent': return 'Parents';
-      default: return role;
+      toast.error(err instanceof Error ? err.message : 'Failed to send announcement');
     }
   };
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center gap-3">
-        <MessageSquare className="h-8 w-8 text-primary" />
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Messaging & Announcements</h1>
-          <p className="text-muted-foreground">Send broadcast announcements to users</p>
+    <div className="min-h-screen bg-background">
+      <header className="bg-primary text-primary-foreground py-4 px-6 shadow-md">
+        <div className="max-w-7xl mx-auto flex items-center gap-4">
+          <img src="/assets/generated/university-crest.dim_256x256.png" alt="Crest" className="w-10 h-10 object-contain" />
+          <div className="flex-1">
+            <h1 className="text-lg font-bold">Messaging & Announcements</h1>
+            <p className="text-xs text-primary-foreground/70">Send announcements to portal users</p>
+          </div>
+          <Button variant="outline" size="sm" className="border-primary-foreground/30 text-primary-foreground hover:bg-primary-foreground/10" onClick={() => navigate({ to: '/admin' })}>
+            <ArrowLeft className="w-4 h-4 mr-2" />Dashboard
+          </Button>
         </div>
-      </div>
+      </header>
 
-      {!isActorReady && (
-        <div className="flex items-center gap-2 p-3 bg-muted rounded-lg text-muted-foreground text-sm">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          <span>Connecting to server — please wait before submitting...</span>
-        </div>
-      )}
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Send className="h-5 w-5" />
-            Compose Announcement
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label>Target Audience</Label>
-              <Select value={targetRole} onValueChange={setTargetRole} disabled={sendAnnouncement.isPending}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select audience" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Users</SelectItem>
-                  <SelectItem value="student">Students Only</SelectItem>
-                  <SelectItem value="staff">Staff Only</SelectItem>
-                  <SelectItem value="parent">Parents Only</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="messageContent">Message</Label>
-              <Textarea
-                id="messageContent"
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                placeholder="Type your announcement here..."
-                rows={5}
-                disabled={sendAnnouncement.isPending}
-              />
-            </div>
-            <Button
-              type="submit"
-              disabled={!isActorReady || sendAnnouncement.isPending}
-              className="w-full md:w-auto"
-            >
-              {sendAnnouncement.isPending ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  Sending...
-                </>
-              ) : !isActorReady ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  Connecting...
-                </>
-              ) : (
-                <>
-                  <Send className="h-4 w-4 mr-2" />
-                  Send Announcement
-                </>
-              )}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
-
-      {sentMessages.length > 0 && (
+      <main className="max-w-4xl mx-auto px-4 py-8 space-y-6">
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Clock className="h-5 w-5" />
-              Sent This Session ({sentMessages.length})
+            <CardTitle className="text-base flex items-center gap-2">
+              <MessageSquare className="w-4 h-4" />Send Announcement
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
-              {sentMessages.map((msg, idx) => (
-                <div key={idx} className="p-4 bg-muted rounded-lg space-y-1">
-                  <div className="flex items-center justify-between text-sm text-muted-foreground">
-                    <span className="font-medium">To: {getRoleLabel(msg.targetRole)}</span>
-                    <span>{msg.timestamp.toLocaleTimeString()}</span>
-                  </div>
-                  <p className="text-foreground">{msg.content}</p>
-                </div>
-              ))}
-            </div>
+            <form onSubmit={handleSend} className="space-y-4">
+              <div className="space-y-1.5">
+                <Label>Target Audience</Label>
+                <Select value={targetRole} onValueChange={setTargetRole}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Users</SelectItem>
+                    <SelectItem value="student">Students</SelectItem>
+                    <SelectItem value="staff">Staff</SelectItem>
+                    <SelectItem value="parent">Parents</SelectItem>
+                    <SelectItem value="admin">Admins</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Message</Label>
+                <Textarea
+                  placeholder="Type your announcement here..."
+                  value={content}
+                  onChange={e => setContent(e.target.value)}
+                  rows={5}
+                  required
+                />
+              </div>
+              <Button type="submit" disabled={sendAnnouncement.isPending || actorFetching} className="w-full sm:w-auto">
+                {sendAnnouncement.isPending ? 'Sending...' : <><Send className="w-4 h-4 mr-2" />Send Announcement</>}
+              </Button>
+            </form>
           </CardContent>
         </Card>
-      )}
+
+        {sentMessages.length > 0 && (
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">Sent This Session</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {sentMessages.map((msg, i) => (
+                <div key={i} className="border border-border rounded-lg p-3">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs font-medium text-primary capitalize">To: {msg.targetRole}</span>
+                    <span className="text-xs text-muted-foreground">{new Date(msg.timestamp).toLocaleTimeString()}</span>
+                  </div>
+                  <p className="text-sm text-foreground">{msg.content}</p>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        )}
+      </main>
     </div>
   );
 }
 
 export default function MessagingPage() {
   return (
-    <RoleGuard requiredRole={UserRole.admin}>
+    <RoleGuard requiredRole="admin">
       <MessagingContent />
     </RoleGuard>
   );

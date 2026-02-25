@@ -1,186 +1,178 @@
 import React, { useState } from 'react';
+import { useNavigate } from '@tanstack/react-router';
 import { toast } from 'sonner';
-import { useActor } from '../../hooks/useActor';
-import { useGetCourses, useAddCourse, extractErrorMessage } from '../../hooks/useQueries';
-import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
-import { Button } from '../../components/ui/button';
-import { Input } from '../../components/ui/input';
-import { Label } from '../../components/ui/label';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/table';
-import { Loader2, PlusCircle, BookOpen } from 'lucide-react';
+import { useGetCourses, useAddCourse } from '../../hooks/useQueries';
 import RoleGuard from '../../components/auth/RoleGuard';
-import { UserRole } from '../../backend';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { ArrowLeft, BookOpen, Plus } from 'lucide-react';
+import { useActor } from '../../hooks/useActor';
 
 function ProgrammeManagementContent() {
-  const { actor, isFetching: actorFetching } = useActor();
+  const navigate = useNavigate();
+  const { isFetching: actorFetching } = useActor();
   const { data: courses = [], isLoading } = useGetCourses();
   const addCourse = useAddCourse();
 
   const [code, setCode] = useState('');
   const [name, setName] = useState('');
-  const [semester, setSemester] = useState('');
+  const [semester, setSemester] = useState('First');
   const [programme, setProgramme] = useState('');
-
-  const isActorReady = !!actor && !actorFetching;
+  const [department, setDepartment] = useState('');
+  const [level, setLevel] = useState('100');
+  const [creditUnits, setCreditUnits] = useState('3');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isActorReady) {
-      toast.error('Please wait — connecting to the server...');
-      return;
-    }
-    if (!code || !name || !semester || !programme) {
-      toast.error('Please fill in all fields.');
-      return;
-    }
     try {
-      await addCourse.mutateAsync({ code, name, semester, programme });
-      toast.success('Course added successfully!');
-      setCode('');
-      setName('');
-      setSemester('');
-      setProgramme('');
+      await addCourse.mutateAsync({
+        code, name, semester, programme, department,
+        level: Number(level), creditUnits: Number(creditUnits),
+      });
+      toast.success('Course added successfully');
+      setCode(''); setName(''); setProgramme(''); setDepartment('');
     } catch (err) {
-      toast.error(extractErrorMessage(err));
+      toast.error(err instanceof Error ? err.message : 'Failed to add course');
     }
   };
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center gap-3">
-        <BookOpen className="h-8 w-8 text-primary" />
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Programme Management</h1>
-          <p className="text-muted-foreground">Add and manage courses across all programmes</p>
+    <div className="min-h-screen bg-background">
+      <header className="bg-primary text-primary-foreground py-4 px-6 shadow-md">
+        <div className="max-w-7xl mx-auto flex items-center gap-4">
+          <img src="/assets/generated/university-crest.dim_256x256.png" alt="Crest" className="w-10 h-10 object-contain" />
+          <div className="flex-1">
+            <h1 className="text-lg font-bold">Programme Management</h1>
+            <p className="text-xs text-primary-foreground/70">Manage courses and programmes</p>
+          </div>
+          <Button variant="outline" size="sm" className="border-primary-foreground/30 text-primary-foreground hover:bg-primary-foreground/10" onClick={() => navigate({ to: '/admin' })}>
+            <ArrowLeft className="w-4 h-4 mr-2" />Dashboard
+          </Button>
         </div>
-      </div>
+      </header>
 
-      {!isActorReady && (
-        <div className="flex items-center gap-2 p-3 bg-muted rounded-lg text-muted-foreground text-sm">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          <span>Connecting to server — please wait before submitting...</span>
-        </div>
-      )}
+      <main className="max-w-7xl mx-auto px-4 py-8 space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Plus className="w-4 h-4" />Add Course
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="space-y-1.5">
+                <Label>Course Code</Label>
+                <Input placeholder="e.g. CSC101" value={code} onChange={e => setCode(e.target.value)} required disabled={actorFetching} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Course Name</Label>
+                <Input placeholder="e.g. Introduction to Computing" value={name} onChange={e => setName(e.target.value)} required disabled={actorFetching} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Department</Label>
+                <Input placeholder="e.g. Computer Science" value={department} onChange={e => setDepartment(e.target.value)} disabled={actorFetching} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Programme</Label>
+                <Input placeholder="e.g. B.Sc Computer Science" value={programme} onChange={e => setProgramme(e.target.value)} disabled={actorFetching} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Semester</Label>
+                <Select value={semester} onValueChange={setSemester}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="First">First Semester</SelectItem>
+                    <SelectItem value="Second">Second Semester</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Level</Label>
+                <Select value={level} onValueChange={setLevel}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {[100,200,300,400,500].map(l => <SelectItem key={l} value={String(l)}>{l} Level</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Credit Units</Label>
+                <Input type="number" min="1" max="6" value={creditUnits} onChange={e => setCreditUnits(e.target.value)} disabled={actorFetching} />
+              </div>
+              <div className="sm:col-span-2 lg:col-span-3">
+                <Button type="submit" disabled={addCourse.isPending || actorFetching} className="w-full sm:w-auto">
+                  {addCourse.isPending ? 'Adding...' : 'Add Course'}
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <PlusCircle className="h-5 w-5" />
-            Add New Course
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="courseCode">Course Code</Label>
-              <Input
-                id="courseCode"
-                value={code}
-                onChange={(e) => setCode(e.target.value)}
-                placeholder="e.g. CSC301"
-                disabled={addCourse.isPending}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="courseName">Course Name</Label>
-              <Input
-                id="courseName"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="e.g. Data Structures"
-                disabled={addCourse.isPending}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="courseSemester">Semester</Label>
-              <Input
-                id="courseSemester"
-                value={semester}
-                onChange={(e) => setSemester(e.target.value)}
-                placeholder="e.g. First Semester"
-                disabled={addCourse.isPending}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="courseProgramme">Programme</Label>
-              <Input
-                id="courseProgramme"
-                value={programme}
-                onChange={(e) => setProgramme(e.target.value)}
-                placeholder="e.g. Computer Science"
-                disabled={addCourse.isPending}
-              />
-            </div>
-            <div className="md:col-span-2">
-              <Button
-                type="submit"
-                disabled={!isActorReady || addCourse.isPending}
-                className="w-full md:w-auto"
-              >
-                {addCourse.isPending ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    Adding Course...
-                  </>
-                ) : !isActorReady ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    Connecting...
-                  </>
-                ) : (
-                  <>
-                    <PlusCircle className="h-4 w-4 mr-2" />
-                    Add Course
-                  </>
-                )}
-              </Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Course Catalogue</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin text-primary" />
-            </div>
-          ) : courses.length === 0 ? (
-            <p className="text-center text-muted-foreground py-8">No courses added yet.</p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Code</TableHead>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Semester</TableHead>
-                  <TableHead>Programme</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {courses.map((course) => (
-                  <TableRow key={course.id.toString()}>
-                    <TableCell className="font-mono font-medium">{course.code}</TableCell>
-                    <TableCell>{course.name}</TableCell>
-                    <TableCell>{course.semester}</TableCell>
-                    <TableCell>{course.programme}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <BookOpen className="w-4 h-4" />Course Catalogue ({courses.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            {isLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="w-6 h-6 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
+              </div>
+            ) : courses.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground">
+                <BookOpen className="w-10 h-10 mx-auto mb-2 opacity-30" />
+                <p>No courses added yet</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Code</TableHead>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Department</TableHead>
+                      <TableHead>Level</TableHead>
+                      <TableHead>Semester</TableHead>
+                      <TableHead>Credits</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {courses.map((c: any) => (
+                      <TableRow key={c.id}>
+                        <TableCell className="font-mono text-sm">{c.code}</TableCell>
+                        <TableCell>{c.name}</TableCell>
+                        <TableCell>{c.department}</TableCell>
+                        <TableCell>{c.level}</TableCell>
+                        <TableCell>{c.semester}</TableCell>
+                        <TableCell>{c.creditUnits}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </main>
     </div>
   );
 }
 
 export default function ProgrammeManagementPage() {
   return (
-    <RoleGuard requiredRole={UserRole.admin}>
+    <RoleGuard requiredRole="admin">
       <ProgrammeManagementContent />
     </RoleGuard>
   );

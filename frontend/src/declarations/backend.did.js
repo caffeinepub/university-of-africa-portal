@@ -8,22 +8,14 @@
 
 import { IDL } from '@icp-sdk/core/candid';
 
+export const GeneratePasswordResponse = IDL.Variant({
+  'ok' : IDL.Record({ 'generatedId' : IDL.Text, 'password' : IDL.Text }),
+  'err' : IDL.Text,
+});
 export const UserRole__1 = IDL.Variant({
   'admin' : IDL.Null,
   'user' : IDL.Null,
   'guest' : IDL.Null,
-});
-export const AdmissionStatus = IDL.Variant({
-  'pending' : IDL.Null,
-  'admitted' : IDL.Null,
-  'rejected' : IDL.Null,
-});
-export const FeeType = IDL.Record({
-  'id' : IDL.Nat,
-  'name' : IDL.Text,
-  'session' : IDL.Text,
-  'amount' : IDL.Nat,
-  'programme' : IDL.Text,
 });
 export const ShoppingItem = IDL.Record({
   'productName' : IDL.Text,
@@ -32,42 +24,32 @@ export const ShoppingItem = IDL.Record({
   'priceInCents' : IDL.Nat,
   'productDescription' : IDL.Text,
 });
-export const Result = IDL.Record({
-  'studentId' : IDL.Text,
-  'semester' : IDL.Text,
-  'score' : IDL.Nat,
-  'grade' : IDL.Text,
-  'courseId' : IDL.Nat,
+export const PortalAccessRole = IDL.Variant({
+  'admin' : IDL.Null,
+  'staff' : IDL.Null,
+  'student' : IDL.Null,
+  'parent' : IDL.Null,
 });
-export const PaymentRecord = IDL.Record({
-  'id' : IDL.Nat,
-  'status' : IDL.Variant({ 'pending' : IDL.Null, 'completed' : IDL.Null }),
-  'paymentMethod' : IDL.Text,
-  'studentId' : IDL.Text,
-  'date' : IDL.Int,
-  'feeType' : IDL.Text,
-  'reference' : IDL.Text,
-  'amount' : IDL.Nat,
-});
-export const AdmissionApplication = IDL.Record({
-  'id' : IDL.Nat,
-  'status' : AdmissionStatus,
-  'documents' : IDL.Vec(IDL.Text),
-  'name' : IDL.Text,
-  'programmeChoice' : IDL.Text,
-  'jambNumber' : IDL.Text,
-  'oLevelResults' : IDL.Vec(IDL.Text),
-});
-export const HostelApplication = IDL.Record({
-  'id' : IDL.Nat,
+export const PortalAccessApplication = IDL.Record({
   'status' : IDL.Variant({
     'pending' : IDL.Null,
     'approved' : IDL.Null,
     'rejected' : IDL.Null,
   }),
-  'studentId' : IDL.Text,
-  'session' : IDL.Text,
-  'roomType' : IDL.Text,
+  'applicantName' : IDL.Text,
+  'generatedId' : IDL.Opt(IDL.Text),
+  'role' : PortalAccessRole,
+  'submittedAt' : IDL.Int,
+  'email' : IDL.Text,
+  'generatedPassword' : IDL.Opt(IDL.Text),
+  'programmeOrDepartment' : IDL.Opt(IDL.Text),
+});
+export const StripeSessionStatus = IDL.Variant({
+  'completed' : IDL.Record({
+    'userPrincipal' : IDL.Opt(IDL.Text),
+    'response' : IDL.Text,
+  }),
+  'failed' : IDL.Record({ 'error' : IDL.Text }),
 });
 export const UserRole = IDL.Variant({
   'admin' : IDL.Null,
@@ -80,27 +62,9 @@ export const UserProfile = IDL.Record({
   'name' : IDL.Text,
   'role' : UserRole,
   'email' : IDL.Text,
+  'level' : IDL.Opt(IDL.Nat),
   'idNumber' : IDL.Text,
-});
-export const Announcement = IDL.Record({
-  'id' : IDL.Nat,
-  'content' : IDL.Text,
-  'timestamp' : IDL.Int,
-  'targetRole' : IDL.Text,
-});
-export const Course = IDL.Record({
-  'id' : IDL.Nat,
-  'semester' : IDL.Text,
-  'code' : IDL.Text,
-  'name' : IDL.Text,
-  'programme' : IDL.Text,
-});
-export const StripeSessionStatus = IDL.Variant({
-  'completed' : IDL.Record({
-    'userPrincipal' : IDL.Opt(IDL.Text),
-    'response' : IDL.Text,
-  }),
-  'failed' : IDL.Record({ 'error' : IDL.Text }),
+  'department' : IDL.Opt(IDL.Text),
 });
 export const StripeConfiguration = IDL.Record({
   'allowedCountries' : IDL.Vec(IDL.Text),
@@ -127,97 +91,41 @@ export const TransformationOutput = IDL.Record({
 
 export const idlService = IDL.Service({
   '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
-  'addCourse' : IDL.Func([IDL.Text, IDL.Text, IDL.Text, IDL.Text], [], []),
-  'addFeeType' : IDL.Func([IDL.Text, IDL.Nat, IDL.Text, IDL.Text], [], []),
-  'addResult' : IDL.Func(
-      [IDL.Text, IDL.Nat, IDL.Text, IDL.Text, IDL.Nat],
-      [],
+  'approvePortalAccessApplication' : IDL.Func(
+      [IDL.Text],
+      [GeneratePasswordResponse],
       [],
     ),
-  'addStudentProfile' : IDL.Func([IDL.Text, IDL.Text, IDL.Text], [], []),
-  'applyForHostel' : IDL.Func([IDL.Text, IDL.Text], [IDL.Nat], []),
-  'assignAccessRole' : IDL.Func([IDL.Principal, UserRole__1], [], []),
   'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole__1], [], []),
-  'bootstrapAdmin' : IDL.Func([IDL.Text, IDL.Text, IDL.Text], [], []),
-  'checkAdmissionStatus' : IDL.Func(
-      [IDL.Text],
-      [IDL.Opt(AdmissionStatus)],
-      ['query'],
-    ),
-  'checkAdmissionStatusByName' : IDL.Func(
-      [IDL.Text],
-      [IDL.Opt(AdmissionStatus)],
-      ['query'],
-    ),
-  'checkUnpaidFees' : IDL.Func([], [IDL.Vec(FeeType)], ['query']),
   'createCheckoutSession' : IDL.Func(
       [IDL.Vec(ShoppingItem), IDL.Text, IDL.Text],
       [IDL.Text],
       [],
     ),
-  'deregisterCourse' : IDL.Func([IDL.Nat], [], []),
-  'getAggregatedStudentData' : IDL.Func(
-      [],
-      [IDL.Vec(Result), IDL.Vec(PaymentRecord)],
-      [],
-    ),
-  'getAllAdmissionApplications' : IDL.Func(
-      [],
-      [IDL.Vec(AdmissionApplication)],
-      ['query'],
-    ),
-  'getAllHostelApplications' : IDL.Func(
-      [],
-      [IDL.Vec(HostelApplication)],
-      ['query'],
-    ),
-  'getAllPayments' : IDL.Func([], [IDL.Vec(PaymentRecord)], ['query']),
-  'getAllResults' : IDL.Func([], [IDL.Vec(Result)], ['query']),
-  'getAllStudents' : IDL.Func([], [IDL.Vec(UserProfile)], ['query']),
-  'getAllUserProfiles' : IDL.Func([], [IDL.Vec(UserProfile)], ['query']),
-  'getAnnouncements' : IDL.Func([IDL.Text], [IDL.Vec(Announcement)], ['query']),
-  'getCallerRole' : IDL.Func([], [IDL.Opt(UserRole)], ['query']),
-  'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
   'getCallerUserRole' : IDL.Func([], [UserRole__1], ['query']),
-  'getCourses' : IDL.Func([], [IDL.Vec(Course)], ['query']),
-  'getFeeTypes' : IDL.Func([], [IDL.Vec(FeeType)], ['query']),
-  'getMyHostelApplication' : IDL.Func(
+  'getMyPortalAccessApplication' : IDL.Func(
+      [IDL.Text],
+      [IDL.Opt(PortalAccessApplication)],
+      ['query'],
+    ),
+  'getPortalAccessApplications' : IDL.Func(
       [],
-      [IDL.Opt(HostelApplication)],
+      [IDL.Vec(PortalAccessApplication)],
       ['query'],
     ),
-  'getPaymentHistory' : IDL.Func([], [IDL.Vec(PaymentRecord)], ['query']),
-  'getRegisteredCourses' : IDL.Func([], [IDL.Vec(IDL.Nat)], ['query']),
-  'getResults' : IDL.Func([], [IDL.Vec(Result)], ['query']),
-  'getResultsForStudent' : IDL.Func([IDL.Text], [IDL.Vec(Result)], ['query']),
   'getStripeSessionStatus' : IDL.Func([IDL.Text], [StripeSessionStatus], []),
-  'getUserDashboard' : IDL.Func([], [IDL.Text], ['query']),
-  'getUserProfile' : IDL.Func(
-      [IDL.Principal],
-      [IDL.Opt(UserProfile)],
-      ['query'],
-    ),
   'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
   'isStripeConfigured' : IDL.Func([], [IDL.Bool], ['query']),
-  'linkParentToStudent' : IDL.Func([IDL.Text], [], []),
-  'recordPayment' : IDL.Func([IDL.Nat, IDL.Opt(IDL.Text), IDL.Text], [], []),
-  'recordPaymentByAdmin' : IDL.Func(
-      [IDL.Text, IDL.Nat, IDL.Text, IDL.Text],
-      [],
-      [],
+  'loginWithIdAndPassword' : IDL.Func(
+      [IDL.Text, IDL.Text],
+      [IDL.Variant({ 'ok' : UserProfile, 'err' : IDL.Text })],
+      ['query'],
     ),
-  'registerCourse' : IDL.Func([IDL.Nat], [], []),
-  'registerProfile' : IDL.Func(
-      [UserRole, IDL.Text, IDL.Text, IDL.Text],
-      [],
-      [],
-    ),
-  'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
-  'sendAnnouncement' : IDL.Func([IDL.Text, IDL.Text], [], []),
+  'rejectPortalAccessApplication' : IDL.Func([IDL.Text], [], []),
   'setStripeConfiguration' : IDL.Func([StripeConfiguration], [], []),
-  'submitApplication' : IDL.Func(
-      [IDL.Text, IDL.Text, IDL.Vec(IDL.Text), IDL.Text, IDL.Vec(IDL.Text)],
-      [IDL.Nat],
+  'submitPortalAccessApplication' : IDL.Func(
+      [IDL.Text, IDL.Text, PortalAccessRole, IDL.Opt(IDL.Text)],
+      [IDL.Text],
       [],
     ),
   'transform' : IDL.Func(
@@ -225,40 +133,19 @@ export const idlService = IDL.Service({
       [TransformationOutput],
       ['query'],
     ),
-  'updateAdmissionStatus' : IDL.Func([IDL.Nat, AdmissionStatus], [], []),
-  'updateHostelApplicationStatus' : IDL.Func(
-      [
-        IDL.Nat,
-        IDL.Variant({
-          'pending' : IDL.Null,
-          'approved' : IDL.Null,
-          'rejected' : IDL.Null,
-        }),
-      ],
-      [],
-      [],
-    ),
 });
 
 export const idlInitArgs = [];
 
 export const idlFactory = ({ IDL }) => {
+  const GeneratePasswordResponse = IDL.Variant({
+    'ok' : IDL.Record({ 'generatedId' : IDL.Text, 'password' : IDL.Text }),
+    'err' : IDL.Text,
+  });
   const UserRole__1 = IDL.Variant({
     'admin' : IDL.Null,
     'user' : IDL.Null,
     'guest' : IDL.Null,
-  });
-  const AdmissionStatus = IDL.Variant({
-    'pending' : IDL.Null,
-    'admitted' : IDL.Null,
-    'rejected' : IDL.Null,
-  });
-  const FeeType = IDL.Record({
-    'id' : IDL.Nat,
-    'name' : IDL.Text,
-    'session' : IDL.Text,
-    'amount' : IDL.Nat,
-    'programme' : IDL.Text,
   });
   const ShoppingItem = IDL.Record({
     'productName' : IDL.Text,
@@ -267,42 +154,32 @@ export const idlFactory = ({ IDL }) => {
     'priceInCents' : IDL.Nat,
     'productDescription' : IDL.Text,
   });
-  const Result = IDL.Record({
-    'studentId' : IDL.Text,
-    'semester' : IDL.Text,
-    'score' : IDL.Nat,
-    'grade' : IDL.Text,
-    'courseId' : IDL.Nat,
+  const PortalAccessRole = IDL.Variant({
+    'admin' : IDL.Null,
+    'staff' : IDL.Null,
+    'student' : IDL.Null,
+    'parent' : IDL.Null,
   });
-  const PaymentRecord = IDL.Record({
-    'id' : IDL.Nat,
-    'status' : IDL.Variant({ 'pending' : IDL.Null, 'completed' : IDL.Null }),
-    'paymentMethod' : IDL.Text,
-    'studentId' : IDL.Text,
-    'date' : IDL.Int,
-    'feeType' : IDL.Text,
-    'reference' : IDL.Text,
-    'amount' : IDL.Nat,
-  });
-  const AdmissionApplication = IDL.Record({
-    'id' : IDL.Nat,
-    'status' : AdmissionStatus,
-    'documents' : IDL.Vec(IDL.Text),
-    'name' : IDL.Text,
-    'programmeChoice' : IDL.Text,
-    'jambNumber' : IDL.Text,
-    'oLevelResults' : IDL.Vec(IDL.Text),
-  });
-  const HostelApplication = IDL.Record({
-    'id' : IDL.Nat,
+  const PortalAccessApplication = IDL.Record({
     'status' : IDL.Variant({
       'pending' : IDL.Null,
       'approved' : IDL.Null,
       'rejected' : IDL.Null,
     }),
-    'studentId' : IDL.Text,
-    'session' : IDL.Text,
-    'roomType' : IDL.Text,
+    'applicantName' : IDL.Text,
+    'generatedId' : IDL.Opt(IDL.Text),
+    'role' : PortalAccessRole,
+    'submittedAt' : IDL.Int,
+    'email' : IDL.Text,
+    'generatedPassword' : IDL.Opt(IDL.Text),
+    'programmeOrDepartment' : IDL.Opt(IDL.Text),
+  });
+  const StripeSessionStatus = IDL.Variant({
+    'completed' : IDL.Record({
+      'userPrincipal' : IDL.Opt(IDL.Text),
+      'response' : IDL.Text,
+    }),
+    'failed' : IDL.Record({ 'error' : IDL.Text }),
   });
   const UserRole = IDL.Variant({
     'admin' : IDL.Null,
@@ -315,27 +192,9 @@ export const idlFactory = ({ IDL }) => {
     'name' : IDL.Text,
     'role' : UserRole,
     'email' : IDL.Text,
+    'level' : IDL.Opt(IDL.Nat),
     'idNumber' : IDL.Text,
-  });
-  const Announcement = IDL.Record({
-    'id' : IDL.Nat,
-    'content' : IDL.Text,
-    'timestamp' : IDL.Int,
-    'targetRole' : IDL.Text,
-  });
-  const Course = IDL.Record({
-    'id' : IDL.Nat,
-    'semester' : IDL.Text,
-    'code' : IDL.Text,
-    'name' : IDL.Text,
-    'programme' : IDL.Text,
-  });
-  const StripeSessionStatus = IDL.Variant({
-    'completed' : IDL.Record({
-      'userPrincipal' : IDL.Opt(IDL.Text),
-      'response' : IDL.Text,
-    }),
-    'failed' : IDL.Record({ 'error' : IDL.Text }),
+    'department' : IDL.Opt(IDL.Text),
   });
   const StripeConfiguration = IDL.Record({
     'allowedCountries' : IDL.Vec(IDL.Text),
@@ -359,120 +218,47 @@ export const idlFactory = ({ IDL }) => {
   
   return IDL.Service({
     '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
-    'addCourse' : IDL.Func([IDL.Text, IDL.Text, IDL.Text, IDL.Text], [], []),
-    'addFeeType' : IDL.Func([IDL.Text, IDL.Nat, IDL.Text, IDL.Text], [], []),
-    'addResult' : IDL.Func(
-        [IDL.Text, IDL.Nat, IDL.Text, IDL.Text, IDL.Nat],
-        [],
+    'approvePortalAccessApplication' : IDL.Func(
+        [IDL.Text],
+        [GeneratePasswordResponse],
         [],
       ),
-    'addStudentProfile' : IDL.Func([IDL.Text, IDL.Text, IDL.Text], [], []),
-    'applyForHostel' : IDL.Func([IDL.Text, IDL.Text], [IDL.Nat], []),
-    'assignAccessRole' : IDL.Func([IDL.Principal, UserRole__1], [], []),
     'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole__1], [], []),
-    'bootstrapAdmin' : IDL.Func([IDL.Text, IDL.Text, IDL.Text], [], []),
-    'checkAdmissionStatus' : IDL.Func(
-        [IDL.Text],
-        [IDL.Opt(AdmissionStatus)],
-        ['query'],
-      ),
-    'checkAdmissionStatusByName' : IDL.Func(
-        [IDL.Text],
-        [IDL.Opt(AdmissionStatus)],
-        ['query'],
-      ),
-    'checkUnpaidFees' : IDL.Func([], [IDL.Vec(FeeType)], ['query']),
     'createCheckoutSession' : IDL.Func(
         [IDL.Vec(ShoppingItem), IDL.Text, IDL.Text],
         [IDL.Text],
         [],
       ),
-    'deregisterCourse' : IDL.Func([IDL.Nat], [], []),
-    'getAggregatedStudentData' : IDL.Func(
-        [],
-        [IDL.Vec(Result), IDL.Vec(PaymentRecord)],
-        [],
-      ),
-    'getAllAdmissionApplications' : IDL.Func(
-        [],
-        [IDL.Vec(AdmissionApplication)],
-        ['query'],
-      ),
-    'getAllHostelApplications' : IDL.Func(
-        [],
-        [IDL.Vec(HostelApplication)],
-        ['query'],
-      ),
-    'getAllPayments' : IDL.Func([], [IDL.Vec(PaymentRecord)], ['query']),
-    'getAllResults' : IDL.Func([], [IDL.Vec(Result)], ['query']),
-    'getAllStudents' : IDL.Func([], [IDL.Vec(UserProfile)], ['query']),
-    'getAllUserProfiles' : IDL.Func([], [IDL.Vec(UserProfile)], ['query']),
-    'getAnnouncements' : IDL.Func(
-        [IDL.Text],
-        [IDL.Vec(Announcement)],
-        ['query'],
-      ),
-    'getCallerRole' : IDL.Func([], [IDL.Opt(UserRole)], ['query']),
-    'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
     'getCallerUserRole' : IDL.Func([], [UserRole__1], ['query']),
-    'getCourses' : IDL.Func([], [IDL.Vec(Course)], ['query']),
-    'getFeeTypes' : IDL.Func([], [IDL.Vec(FeeType)], ['query']),
-    'getMyHostelApplication' : IDL.Func(
+    'getMyPortalAccessApplication' : IDL.Func(
+        [IDL.Text],
+        [IDL.Opt(PortalAccessApplication)],
+        ['query'],
+      ),
+    'getPortalAccessApplications' : IDL.Func(
         [],
-        [IDL.Opt(HostelApplication)],
+        [IDL.Vec(PortalAccessApplication)],
         ['query'],
       ),
-    'getPaymentHistory' : IDL.Func([], [IDL.Vec(PaymentRecord)], ['query']),
-    'getRegisteredCourses' : IDL.Func([], [IDL.Vec(IDL.Nat)], ['query']),
-    'getResults' : IDL.Func([], [IDL.Vec(Result)], ['query']),
-    'getResultsForStudent' : IDL.Func([IDL.Text], [IDL.Vec(Result)], ['query']),
     'getStripeSessionStatus' : IDL.Func([IDL.Text], [StripeSessionStatus], []),
-    'getUserDashboard' : IDL.Func([], [IDL.Text], ['query']),
-    'getUserProfile' : IDL.Func(
-        [IDL.Principal],
-        [IDL.Opt(UserProfile)],
-        ['query'],
-      ),
     'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
     'isStripeConfigured' : IDL.Func([], [IDL.Bool], ['query']),
-    'linkParentToStudent' : IDL.Func([IDL.Text], [], []),
-    'recordPayment' : IDL.Func([IDL.Nat, IDL.Opt(IDL.Text), IDL.Text], [], []),
-    'recordPaymentByAdmin' : IDL.Func(
-        [IDL.Text, IDL.Nat, IDL.Text, IDL.Text],
-        [],
-        [],
+    'loginWithIdAndPassword' : IDL.Func(
+        [IDL.Text, IDL.Text],
+        [IDL.Variant({ 'ok' : UserProfile, 'err' : IDL.Text })],
+        ['query'],
       ),
-    'registerCourse' : IDL.Func([IDL.Nat], [], []),
-    'registerProfile' : IDL.Func(
-        [UserRole, IDL.Text, IDL.Text, IDL.Text],
-        [],
-        [],
-      ),
-    'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
-    'sendAnnouncement' : IDL.Func([IDL.Text, IDL.Text], [], []),
+    'rejectPortalAccessApplication' : IDL.Func([IDL.Text], [], []),
     'setStripeConfiguration' : IDL.Func([StripeConfiguration], [], []),
-    'submitApplication' : IDL.Func(
-        [IDL.Text, IDL.Text, IDL.Vec(IDL.Text), IDL.Text, IDL.Vec(IDL.Text)],
-        [IDL.Nat],
+    'submitPortalAccessApplication' : IDL.Func(
+        [IDL.Text, IDL.Text, PortalAccessRole, IDL.Opt(IDL.Text)],
+        [IDL.Text],
         [],
       ),
     'transform' : IDL.Func(
         [TransformationInput],
         [TransformationOutput],
         ['query'],
-      ),
-    'updateAdmissionStatus' : IDL.Func([IDL.Nat, AdmissionStatus], [], []),
-    'updateHostelApplicationStatus' : IDL.Func(
-        [
-          IDL.Nat,
-          IDL.Variant({
-            'pending' : IDL.Null,
-            'approved' : IDL.Null,
-            'rejected' : IDL.Null,
-          }),
-        ],
-        [],
-        [],
       ),
   });
 };

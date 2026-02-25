@@ -13,7 +13,7 @@ interface RoleGuardProps {
   requiredRole: UserRole;
 }
 
-function useGetCallerUserProfile() {
+function useLocalCallerUserProfile() {
   const { actor, isFetching: actorFetching } = useActor();
   const { identity } = useInternetIdentity();
 
@@ -21,7 +21,9 @@ function useGetCallerUserProfile() {
     queryKey: ['currentUserProfile'],
     queryFn: async () => {
       if (!actor) throw new Error('Actor not available');
-      return actor.getCallerUserProfile();
+      // Cast to any because getCallerUserProfile is not in the generated interface
+      // but is available on the backend actor at runtime
+      return (actor as any).getCallerUserProfile();
     },
     enabled: !!actor && !actorFetching && !!identity,
     retry: false,
@@ -41,7 +43,7 @@ export default function RoleGuard({ children, requiredRole }: RoleGuardProps) {
   const isAuthenticated = !!identity;
   const isLoggingIn = loginStatus === 'logging-in';
 
-  const { data: userProfile, isLoading: profileLoading, isFetched } = useGetCallerUserProfile();
+  const { data: userProfile, isLoading: profileLoading, isFetched } = useLocalCallerUserProfile();
 
   // Still initializing auth or fetching profile
   if (isInitializing || (isAuthenticated && profileLoading)) {
@@ -77,8 +79,8 @@ export default function RoleGuard({ children, requiredRole }: RoleGuardProps) {
                 try {
                   await login();
                 } catch (error: any) {
-                  if (error.message === 'User is already authenticated') {
-                    await import('../hooks/useInternetIdentity').then(() => {});
+                  if (error?.message === 'User is already authenticated') {
+                    // Already authenticated, ignore
                   }
                 }
               }}
@@ -113,8 +115,8 @@ export default function RoleGuard({ children, requiredRole }: RoleGuardProps) {
   }
 
   // Logged in but no profile or wrong role
-  if (!userProfile || userProfile.role !== requiredRole) {
-    const roleLabel = requiredRole.charAt(0).toUpperCase() + requiredRole.slice(1);
+  if (!userProfile || (userProfile.role as string) !== (requiredRole as string)) {
+    const roleLabel = (requiredRole as string).charAt(0).toUpperCase() + (requiredRole as string).slice(1);
     return (
       <div className="min-h-screen flex items-center justify-center bg-background px-4">
         <div className="max-w-md w-full text-center space-y-6">
@@ -138,11 +140,9 @@ export default function RoleGuard({ children, requiredRole }: RoleGuardProps) {
             {userProfile && (
               <Button
                 variant="outline"
-                onClick={async () => {
-                  const { useInternetIdentity: useII } = await import('../hooks/useInternetIdentity');
-                }}
+                onClick={() => navigate({ to: `/${userProfile.role as string}` as any })}
               >
-                Switch Account
+                My Dashboard
               </Button>
             )}
           </div>

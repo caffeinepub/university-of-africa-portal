@@ -1,123 +1,102 @@
-import { useQuery } from '@tanstack/react-query';
-import { useActor } from '../../hooks/useActor';
-import { UserRole, Result } from '../../backend';
-import RoleGuard from '../../components/RoleGuard';
+import React from 'react';
+import { useNavigate } from '@tanstack/react-router';
+import { ArrowLeft, BarChart3 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, FileText } from 'lucide-react';
-import { Link } from '@tanstack/react-router';
-import { GraduationCap, BookOpen, DollarSign, Home, CreditCard, Bell } from 'lucide-react';
+import { useGetCallerUserProfile, useGetStudentResults } from '../../hooks/useQueries';
 
-const sidebarLinks = [
-  { icon: GraduationCap, label: 'Dashboard', to: '/student' },
-  { icon: BookOpen, label: 'Course Registration', to: '/student/courses' },
-  { icon: DollarSign, label: 'Fee Statement', to: '/student/fees' },
-  { icon: FileText, label: 'Results', to: '/student/results' },
-  { icon: FileText, label: 'Transcript', to: '/student/transcript' },
-  { icon: Home, label: 'Hostel Application', to: '/student/hostel' },
-  { icon: CreditCard, label: 'Payment History', to: '/student/payments' },
-  { icon: Bell, label: 'Announcements', to: '/student' },
-];
+const gradePoints: Record<string, number> = { A: 5, B: 4, C: 3, D: 2, E: 1, F: 0 };
 
-function ResultsContent() {
-  const { actor } = useActor();
+export default function ResultsPage() {
+  const navigate = useNavigate();
+  const { data: userProfile } = useGetCallerUserProfile();
+  const studentId = userProfile?.idNumber ?? '';
+  const { data: results = [], isLoading } = useGetStudentResults(studentId);
 
-  const { data: results = [], isLoading } = useQuery({
-    queryKey: ['studentResults'],
-    queryFn: async () => {
-      if (!actor) return [];
-      return actor.getResults();
-    },
-    enabled: !!actor,
-  });
+  const semesters = Array.from(new Set((results as any[]).map((r: any) => r.semester)));
 
-  const resultsBySemester: Record<string, Result[]> = {};
-  results.forEach((result) => {
-    if (!resultsBySemester[result.semester]) {
-      resultsBySemester[result.semester] = [];
-    }
-    resultsBySemester[result.semester].push(result);
-  });
+  const calcGPA = (semResults: any[]) => {
+    if (!semResults.length) return '0.00';
+    const total = semResults.reduce((sum: number, r: any) => sum + (gradePoints[r.grade] ?? 0), 0);
+    return (total / semResults.length).toFixed(2);
+  };
 
-  const getGradeBadge = (grade: string) => {
-    if (grade === 'A') return <Badge className="bg-green-100 text-green-800">A</Badge>;
-    if (grade === 'B') return <Badge className="bg-blue-100 text-blue-800">B</Badge>;
-    if (grade === 'C') return <Badge variant="secondary">C</Badge>;
-    if (grade === 'F') return <Badge variant="destructive">F</Badge>;
-    return <Badge variant="outline">{grade}</Badge>;
+  const getGradeBadgeColor = (grade: string) => {
+    if (grade === 'A') return 'bg-green-100 text-green-800';
+    if (grade === 'B') return 'bg-blue-100 text-blue-800';
+    if (grade === 'C') return 'bg-amber-100 text-amber-800';
+    if (grade === 'D') return 'bg-orange-100 text-orange-800';
+    return 'bg-red-100 text-red-800';
   };
 
   return (
-    <div className="flex min-h-screen bg-muted/30">
-      <aside className="w-64 bg-background border-r border-border hidden md:flex flex-col">
-        <div className="p-4 border-b border-border">
-          <h2 className="font-bold text-primary text-lg">Student Portal</h2>
-          <p className="text-xs text-muted-foreground mt-1">Academic Services</p>
+    <div className="min-h-screen bg-background">
+      <header className="bg-primary text-primary-foreground py-4 px-6 shadow-md">
+        <div className="max-w-4xl mx-auto flex items-center gap-4">
+          <img src="/assets/generated/university-crest.dim_256x256.png" alt="Crest" className="w-10 h-10 object-contain" />
+          <div className="flex-1">
+            <h1 className="text-lg font-bold">Academic Results</h1>
+            <p className="text-xs text-primary-foreground/70">{userProfile?.name}</p>
+          </div>
+          <Button variant="outline" size="sm" className="border-primary-foreground/30 text-primary-foreground hover:bg-primary-foreground/10" onClick={() => navigate({ to: '/student' })}>
+            <ArrowLeft className="w-4 h-4 mr-2" />Dashboard
+          </Button>
         </div>
-        <nav className="flex-1 p-3 space-y-1">
-          {sidebarLinks.map((link) => (
-            <Link key={link.to + link.label} to={link.to} className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-foreground/80 hover:text-primary hover:bg-primary/5 transition-colors">
-              <link.icon className="h-4 w-4 flex-shrink-0" />
-              {link.label}
-            </Link>
-          ))}
-        </nav>
-      </aside>
-      <main className="flex-1 p-6">
-        <div className="max-w-3xl mx-auto space-y-6">
-          <h1 className="text-2xl font-bold text-foreground">Academic Results</h1>
-          {isLoading ? (
-            <div className="flex items-center gap-2 text-muted-foreground py-8 justify-center">
-              <Loader2 className="h-5 w-5 animate-spin" />
-              <span>Loading results...</span>
-            </div>
-          ) : results.length === 0 ? (
-            <Card>
-              <CardContent className="py-10 text-center text-muted-foreground">
-                No results available yet.
-              </CardContent>
-            </Card>
-          ) : (
-            Object.entries(resultsBySemester).map(([semester, semResults]) => {
-              const typedResults: Result[] = semResults;
-              const avg = typedResults.length > 0
-                ? typedResults.reduce((sum, r) => sum + Number(r.score), 0) / typedResults.length
-                : 0;
+      </header>
+
+      <main className="max-w-4xl mx-auto px-4 py-8">
+        {isLoading ? (
+          <div className="flex items-center justify-center py-20">
+            <div className="w-8 h-8 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
+          </div>
+        ) : (results as any[]).length === 0 ? (
+          <div className="text-center py-20 text-muted-foreground">
+            <BarChart3 className="w-12 h-12 mx-auto mb-3 opacity-30" />
+            <p className="font-medium">No results available yet</p>
+          </div>
+        ) : (
+          <div className="space-y-6">
+            {semesters.map((sem) => {
+              const semResults: any[] = (results as any[]).filter((r: any) => r.semester === sem);
               return (
-                <Card key={semester}>
-                  <CardHeader>
+                <Card key={sem as string}>
+                  <CardHeader className="pb-3">
                     <div className="flex items-center justify-between">
-                      <CardTitle className="text-base">{semester}</CardTitle>
-                      <Badge variant="outline">GPA: {avg.toFixed(1)}</Badge>
+                      <CardTitle className="text-base">{sem as string} Semester</CardTitle>
+                      <span className="text-sm font-semibold text-primary">GPA: {calcGPA(semResults)}</span>
                     </div>
                   </CardHeader>
-                  <CardContent>
-                    <div className="space-y-2">
-                      {typedResults.map((result, idx) => (
-                        <div key={idx} className="flex items-center justify-between p-2 rounded-lg bg-muted/50 text-sm">
-                          <span className="text-foreground/80">Course #{String(result.courseId)}</span>
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium">{String(result.score)}/100</span>
-                            {getGradeBadge(result.grade)}
-                          </div>
-                        </div>
-                      ))}
+                  <CardContent className="p-0">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead className="bg-muted/50">
+                          <tr>
+                            <th className="text-left px-4 py-2 font-medium">Course ID</th>
+                            <th className="text-left px-4 py-2 font-medium">Score</th>
+                            <th className="text-left px-4 py-2 font-medium">Grade</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {semResults.map((r: any, i: number) => (
+                            <tr key={i} className="border-t border-border">
+                              <td className="px-4 py-2 font-mono">{r.courseId}</td>
+                              <td className="px-4 py-2">{r.score}</td>
+                              <td className="px-4 py-2">
+                                <Badge className={getGradeBadgeColor(r.grade)}>{r.grade}</Badge>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
                     </div>
                   </CardContent>
                 </Card>
               );
-            })
-          )}
-        </div>
+            })}
+          </div>
+        )}
       </main>
     </div>
-  );
-}
-
-export default function ResultsPage() {
-  return (
-    <RoleGuard requiredRole={UserRole.student}>
-      <ResultsContent />
-    </RoleGuard>
   );
 }

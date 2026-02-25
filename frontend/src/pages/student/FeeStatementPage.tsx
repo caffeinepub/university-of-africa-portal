@@ -17,26 +17,40 @@ import {
   useGetPaymentHistory,
   useCheckUnpaidFees,
   useCreateCheckoutSession,
+  useGetCallerUserProfile,
 } from '../../hooks/useQueries';
 import { formatNairaFromBackend } from '../../utils/currency';
 import { toast } from 'sonner';
-import type { FeeType } from '../../backend';
+
+interface FeeTypeItem {
+  id: number | bigint;
+  name: string;
+  amount: bigint;
+  programme: string;
+  session: string;
+}
 
 export default function FeeStatementPage() {
   const navigate = useNavigate();
+  const { data: userProfile } = useGetCallerUserProfile();
+  const studentId = userProfile?.idNumber ?? '';
+
   const { data: feeTypes = [], isLoading: feesLoading } = useGetFeeTypes();
   const { data: payments = [], isLoading: paymentsLoading } = useGetPaymentHistory();
-  const { data: unpaidFees = [], isLoading: unpaidLoading } = useCheckUnpaidFees();
+  const { data: unpaidFees = [], isLoading: unpaidLoading } = useCheckUnpaidFees(studentId);
   const createCheckout = useCreateCheckoutSession();
 
   const isLoading = feesLoading || paymentsLoading || unpaidLoading;
 
-  const totalPaid = payments.reduce((sum, p) => sum + Number(p.amount), 0);
-  const totalOutstanding = unpaidFees.reduce((sum, f) => sum + Number(f.amount), 0);
+  const totalPaid = (payments as any[]).reduce((sum: number, p: any) => sum + Number(p.amount), 0);
+  const totalOutstanding = (unpaidFees as any[]).reduce(
+    (sum: number, f: any) => sum + Number(f.amount),
+    0,
+  );
 
-  const paidFeeNames = new Set(payments.map((p) => p.feeType));
+  const paidFeeNames = new Set((payments as any[]).map((p: any) => p.feeType));
 
-  const handlePayNow = async (fee: FeeType) => {
+  const handlePayNow = async (fee: FeeTypeItem) => {
     try {
       const baseUrl = `${window.location.protocol}//${window.location.host}`;
       const session = await createCheckout.mutateAsync({
@@ -116,7 +130,7 @@ export default function FeeStatementPage() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {feeTypes.length === 0 ? (
+          {(feeTypes as any[]).length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               <CreditCard className="h-12 w-12 mx-auto mb-3 opacity-30" />
               <p>No fee types have been defined yet.</p>
@@ -134,7 +148,7 @@ export default function FeeStatementPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {feeTypes.map((fee) => {
+                {(feeTypes as FeeTypeItem[]).map((fee) => {
                   const isPaid = paidFeeNames.has(fee.name);
                   return (
                     <TableRow key={String(fee.id)}>
@@ -176,7 +190,7 @@ export default function FeeStatementPage() {
       </Card>
 
       {/* Recent Payments */}
-      {payments.length > 0 && (
+      {(payments as any[]).length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
@@ -184,7 +198,11 @@ export default function FeeStatementPage() {
                 <Receipt className="h-5 w-5 text-primary" />
                 Recent Payments
               </span>
-              <Button variant="outline" size="sm" onClick={() => navigate({ to: '/student/payments' })}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate({ to: '/student/payments' })}
+              >
                 View All
               </Button>
             </CardTitle>
@@ -200,7 +218,7 @@ export default function FeeStatementPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {payments.slice(0, 5).map((payment) => (
+                {(payments as any[]).slice(0, 5).map((payment: any) => (
                   <TableRow key={String(payment.id)}>
                     <TableCell className="font-medium">{payment.feeType}</TableCell>
                     <TableCell className="font-semibold text-green-700 dark:text-green-400">
@@ -209,7 +227,9 @@ export default function FeeStatementPage() {
                     <TableCell>
                       {new Date(Number(payment.date) / 1_000_000).toLocaleDateString('en-NG')}
                     </TableCell>
-                    <TableCell className="font-mono text-sm">{payment.reference || '—'}</TableCell>
+                    <TableCell className="font-mono text-sm">
+                      {payment.reference || '—'}
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>

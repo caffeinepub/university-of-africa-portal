@@ -1,18 +1,27 @@
 import React, { useState } from 'react';
+import { useNavigate } from '@tanstack/react-router';
 import { toast } from 'sonner';
-import { useActor } from '../../hooks/useActor';
-import { useGetFeeTypes, useAddFeeType, extractErrorMessage } from '../../hooks/useQueries';
-import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
-import { Button } from '../../components/ui/button';
-import { Input } from '../../components/ui/input';
-import { Label } from '../../components/ui/label';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/table';
-import { Loader2, PlusCircle, DollarSign } from 'lucide-react';
+import { useGetFeeTypes, useAddFeeType } from '../../hooks/useQueries';
 import RoleGuard from '../../components/auth/RoleGuard';
-import { UserRole } from '../../backend';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { ArrowLeft, DollarSign, Plus } from 'lucide-react';
+import { useActor } from '../../hooks/useActor';
+import { formatNaira } from '../../utils/currency';
 
 function FeeManagementContent() {
-  const { actor, isFetching: actorFetching } = useActor();
+  const navigate = useNavigate();
+  const { isFetching: actorFetching } = useActor();
   const { data: feeTypes = [], isLoading } = useGetFeeTypes();
   const addFeeType = useAddFeeType();
 
@@ -21,179 +30,116 @@ function FeeManagementContent() {
   const [programme, setProgramme] = useState('');
   const [session, setSession] = useState('');
 
-  const isActorReady = !!actor && !actorFetching;
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isActorReady) {
-      toast.error('Please wait — connecting to the server...');
-      return;
-    }
-    if (!name || !amount || !programme || !session) {
-      toast.error('Please fill in all fields.');
-      return;
-    }
     try {
-      await addFeeType.mutateAsync({
-        name,
-        amount: BigInt(Math.round(parseFloat(amount) * 100)),
-        programme,
-        session,
-      });
-      toast.success('Fee type added successfully!');
-      setName('');
-      setAmount('');
-      setProgramme('');
-      setSession('');
+      await addFeeType.mutateAsync({ name, amount: Number(amount), programme, session });
+      toast.success('Fee type added successfully');
+      setName(''); setAmount(''); setProgramme(''); setSession('');
     } catch (err) {
-      toast.error(extractErrorMessage(err));
+      toast.error(err instanceof Error ? err.message : 'Failed to add fee type');
     }
-  };
-
-  const formatAmount = (amount: bigint) => {
-    return new Intl.NumberFormat('en-NG', {
-      style: 'currency',
-      currency: 'NGN',
-    }).format(Number(amount) / 100);
   };
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center gap-3">
-        <DollarSign className="h-8 w-8 text-primary" />
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Fee Management</h1>
-          <p className="text-muted-foreground">Add and manage fee types for all programmes</p>
+    <div className="min-h-screen bg-background">
+      <header className="bg-primary text-primary-foreground py-4 px-6 shadow-md">
+        <div className="max-w-7xl mx-auto flex items-center gap-4">
+          <img src="/assets/generated/university-crest.dim_256x256.png" alt="Crest" className="w-10 h-10 object-contain" />
+          <div className="flex-1">
+            <h1 className="text-lg font-bold">Fee Management</h1>
+            <p className="text-xs text-primary-foreground/70">Manage fee types and schedules</p>
+          </div>
+          <Button variant="outline" size="sm" className="border-primary-foreground/30 text-primary-foreground hover:bg-primary-foreground/10" onClick={() => navigate({ to: '/admin' })}>
+            <ArrowLeft className="w-4 h-4 mr-2" />Dashboard
+          </Button>
         </div>
-      </div>
+      </header>
 
-      {!isActorReady && (
-        <div className="flex items-center gap-2 p-3 bg-muted rounded-lg text-muted-foreground text-sm">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          <span>Connecting to server — please wait before submitting...</span>
-        </div>
-      )}
+      <main className="max-w-7xl mx-auto px-4 py-8 space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Plus className="w-4 h-4" />Add Fee Type
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label>Fee Name</Label>
+                <Input placeholder="e.g. Tuition Fee" value={name} onChange={e => setName(e.target.value)} required disabled={actorFetching} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Amount (₦)</Label>
+                <Input type="number" placeholder="e.g. 150000" value={amount} onChange={e => setAmount(e.target.value)} required disabled={actorFetching} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Programme</Label>
+                <Input placeholder="e.g. Computer Science" value={programme} onChange={e => setProgramme(e.target.value)} disabled={actorFetching} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Session</Label>
+                <Input placeholder="e.g. 2024/2025" value={session} onChange={e => setSession(e.target.value)} disabled={actorFetching} />
+              </div>
+              <div className="sm:col-span-2">
+                <Button type="submit" disabled={addFeeType.isPending || actorFetching} className="w-full sm:w-auto">
+                  {addFeeType.isPending ? 'Adding...' : 'Add Fee Type'}
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <PlusCircle className="h-5 w-5" />
-            Add New Fee Type
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="feeName">Fee Name</Label>
-              <Input
-                id="feeName"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="e.g. Tuition Fee"
-                disabled={addFeeType.isPending}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="feeAmount">Amount (₦)</Label>
-              <Input
-                id="feeAmount"
-                type="number"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                placeholder="e.g. 150000"
-                disabled={addFeeType.isPending}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="feeProgramme">Programme</Label>
-              <Input
-                id="feeProgramme"
-                value={programme}
-                onChange={(e) => setProgramme(e.target.value)}
-                placeholder="e.g. Computer Science"
-                disabled={addFeeType.isPending}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="feeSession">Session</Label>
-              <Input
-                id="feeSession"
-                value={session}
-                onChange={(e) => setSession(e.target.value)}
-                placeholder="e.g. 2024/2025"
-                disabled={addFeeType.isPending}
-              />
-            </div>
-            <div className="md:col-span-2">
-              <Button
-                type="submit"
-                disabled={!isActorReady || addFeeType.isPending}
-                className="w-full md:w-auto"
-              >
-                {addFeeType.isPending ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    Adding Fee...
-                  </>
-                ) : !isActorReady ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    Connecting...
-                  </>
-                ) : (
-                  <>
-                    <PlusCircle className="h-4 w-4 mr-2" />
-                    Add Fee Type
-                  </>
-                )}
-              </Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>All Fee Types</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin text-primary" />
-            </div>
-          ) : feeTypes.length === 0 ? (
-            <p className="text-center text-muted-foreground py-8">No fee types added yet.</p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Amount</TableHead>
-                  <TableHead>Programme</TableHead>
-                  <TableHead>Session</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {feeTypes.map((fee) => (
-                  <TableRow key={fee.id.toString()}>
-                    <TableCell className="font-medium">{fee.name}</TableCell>
-                    <TableCell>{formatAmount(fee.amount)}</TableCell>
-                    <TableCell>{fee.programme}</TableCell>
-                    <TableCell>{fee.session}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <DollarSign className="w-4 h-4" />Fee Types ({feeTypes.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            {isLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="w-6 h-6 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
+              </div>
+            ) : feeTypes.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground">
+                <DollarSign className="w-10 h-10 mx-auto mb-2 opacity-30" />
+                <p>No fee types added yet</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Amount</TableHead>
+                      <TableHead>Programme</TableHead>
+                      <TableHead>Session</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {feeTypes.map((f: any) => (
+                      <TableRow key={f.id}>
+                        <TableCell className="font-medium">{f.name}</TableCell>
+                        <TableCell>{formatNaira(f.amount)}</TableCell>
+                        <TableCell>{f.programme}</TableCell>
+                        <TableCell>{f.session}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </main>
     </div>
   );
 }
 
 export default function FeeManagementPage() {
   return (
-    <RoleGuard requiredRole={UserRole.admin}>
+    <RoleGuard requiredRole="admin">
       <FeeManagementContent />
     </RoleGuard>
   );

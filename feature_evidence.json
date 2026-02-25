@@ -2,10 +2,78 @@
   "kind": "feature_evidence_report",
   "features": [
     {
-      "featureId": "feature-create-a-portal-selection-page-at-portal-or-as-a-prominent-section-on-the-homepage-that-displays-four-distinct-portal-entry-cards-student-portal-staff-portal-admin-portal-and-parent-portal-each-card-must-have-a-clear-label-a-brief-description-of-the-portal-and-a-login-or-access-portal-button-clicking-a-card-navigates-the-visitor-to-that-role-s-dedicated-login-page",
-      "featureTitle": "Create a Portal Selection page at /portal (or as a prominent section on the homepage) that displays four distinct portal entry cards: Student Portal, Staff Portal, Admin Portal, and Parent Portal. Each card must have a clear label, a brief description of the portal, and a 'Login' or 'Access Portal' button. Clicking a card navigates the visitor to that role's dedicated login page.",
+      "featureId": "feature-create-a-public-facing-portal-access-application-page-at-apply-frontend-src-pages-portalaccessapplicationpage-tsx-the-page-must-display-the-university-logo-and-heading-apply-for-portal-access-it-must-render-a-single-step-form-with-fields-full-name-text-email-address-text-role-dropdown-student-staff-parent-admin-and-programme-department-text-labelled-contextually-based-on-role-programme-for-students-department-for-staff-admin-ward-s-programme-for-parents-on-submission-call-the-submitportalaccessapplication-backend-function-via-a-react-query-mutation-on-success-display-a-confirmation-message-your-application-has-been-submitted-you-will-receive-your-login-credentials-once-your-access-is-approved-by-the-administrator-on-error-display-a-human-readable-inline-error-message-the-page-must-use-the-existing-deep-navy-and-gold-academic-theme",
+      "featureTitle": "Create a public-facing Portal Access Application page at `/apply` (`frontend/src/pages/PortalAccessApplicationPage.tsx`). The page must display the university logo and heading 'Apply for Portal Access'. It must render a single-step form with fields: Full Name (text), Email Address (text), Role (dropdown: Student, Staff, Parent, Admin), and Programme/Department (text, labelled contextually based on role — 'Programme' for students, 'Department' for staff/admin, 'Ward's Programme' for parents). On submission, call the `submitPortalAccessApplication` backend function via a React Query mutation. On success, display a confirmation message: 'Your application has been submitted. You will receive your login credentials once your access is approved by the administrator.' On error, display a human-readable inline error message. The page must use the existing deep navy and gold academic theme.",
       "files": [
         "frontend/src/App.tsx",
+        "frontend/src/pages/PortalAccessApplicationPage.tsx"
+      ],
+      "components": [
+        "authorization@4.0.0",
+        "stripe@3.0.0",
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0",
+        "http-outcalls@3.0.0"
+      ],
+      "testIds": [
+        "REQ-45"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-add-an-access-applications-section-to-the-admin-panel-frontend-src-pages-admin-accessapplicationspage-tsx-wrapped-with-roleguard-admin-role-this-page-must-fetch-all-portal-access-applications-via-getportalaccessapplications-and-display-them-in-a-table-with-columns-applicant-name-email-role-programme-department-submitted-date-status-badge-and-an-actions-column-for-pending-applications-show-approve-and-reject-buttons-clicking-approve-calls-approveportalaccessapplication-and-on-success-shows-a-modal-toast-displaying-the-generated-role-id-and-password-so-the-admin-can-communicate-these-credentials-to-the-applicant-e-g-student-id-matric-2024-0001-password-xk7-mp2q-clicking-reject-calls-rejectportalaccessapplication-after-any-action-immediately-invalidate-and-refetch-the-applications-list-query-add-a-link-to-this-page-in-the-admin-dashboard-sidebar-under-the-label-access-applications",
+      "featureTitle": "Add an 'Access Applications' section to the Admin Panel (`frontend/src/pages/admin/AccessApplicationsPage.tsx`) wrapped with RoleGuard (admin role). This page must fetch all portal access applications via `getPortalAccessApplications` and display them in a table with columns: Applicant Name, Email, Role, Programme/Department, Submitted Date, Status (badge), and an Actions column. For pending applications, show 'Approve' and 'Reject' buttons. Clicking 'Approve' calls `approvePortalAccessApplication` and on success shows a modal/toast displaying the generated Role ID and Password so the admin can communicate these credentials to the applicant (e.g., 'Student ID: MATRIC/2024/0001 | Password: Xk7#mP2q'). Clicking 'Reject' calls `rejectPortalAccessApplication`. After any action, immediately invalidate and refetch the applications list query. Add a link to this page in the Admin Dashboard sidebar under the label 'Access Applications'.",
+      "files": [
+        "frontend/src/App.tsx",
+        "frontend/src/pages/admin/AccessApplicationsPage.tsx",
+        "frontend/src/pages/admin/AdminDashboard.tsx"
+      ],
+      "components": [
+        "authorization@4.0.0",
+        "stripe@3.0.0",
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0",
+        "http-outcalls@3.0.0"
+      ],
+      "testIds": [
+        "REQ-46"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-create-a-dedicated-id-password-login-page-at-id-login-frontend-src-pages-idpasswordloginpage-tsx-this-page-must-prominently-display-the-university-logo-from-assets-generated-university-logo-dim-200x200-png-or-the-existing-logo-asset-the-university-name-and-a-login-form-with-two-fields-your-id-placeholder-text-changes-based-on-a-role-selector-enter-matriculation-number-for-students-enter-staff-id-for-staff-enter-parent-id-for-parents-enter-admin-id-for-admins-and-password-include-a-role-selector-student-staff-admin-parent-above-the-id-field-so-the-placeholder-updates-dynamically-on-form-submission-call-the-loginwithidandpassword-backend-function-on-success-store-the-returned-userprofile-in-react-query-state-context-and-redirect-the-user-to-their-role-specific-dashboard-student-staff-admin-or-parent-on-failure-display-a-clear-inline-error-invalid-id-or-password-please-check-your-credentials-or-contact-the-administrator-the-page-must-use-the-deep-navy-and-gold-academic-theme-and-be-fully-responsive",
+      "featureTitle": "Create a dedicated ID/Password login page at `/id-login` (`frontend/src/pages/IdPasswordLoginPage.tsx`). This page must prominently display the university logo (from `/assets/generated/university-logo.dim_200x200.png` or the existing logo asset), the university name, and a login form with two fields: 'Your ID' (placeholder text changes based on a role selector: 'Enter Matriculation Number' for students, 'Enter Staff ID' for staff, 'Enter Parent ID' for parents, 'Enter Admin ID' for admins) and 'Password'. Include a Role selector (Student, Staff, Admin, Parent) above the ID field so the placeholder updates dynamically. On form submission, call the `loginWithIdAndPassword` backend function. On success, store the returned UserProfile in React Query state/context and redirect the user to their role-specific dashboard (`/student`, `/staff`, `/admin`, or `/parent`). On failure, display a clear inline error: 'Invalid ID or password. Please check your credentials or contact the administrator.' The page must use the deep navy and gold academic theme and be fully responsive.",
+      "files": [
+        "frontend/src/App.tsx",
+        "frontend/src/pages/IdPasswordLoginPage.tsx"
+      ],
+      "components": [
+        "authorization@4.0.0",
+        "stripe@3.0.0",
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0",
+        "http-outcalls@3.0.0"
+      ],
+      "testIds": [
+        "REQ-47"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-add-an-apply-for-portal-access-link-and-an-id-password-login-link-to-the-public-navigation-and-the-portal-selection-page-portal-on-the-public-homepage-homepage-tsx-add-a-visible-call-to-action-banner-or-card-section-titled-new-user-apply-for-portal-access-with-a-button-linking-to-apply-and-a-secondary-link-already-have-credentials-login-with-your-id-linking-to-id-login-on-the-portal-selection-page-portalselectionpage-tsx-add-a-footer-row-beneath-the-four-portal-cards-with-these-two-links-in-the-main-navigation-component-add-an-apply-for-access-link-and-a-id-login-link-in-the-unauthenticated-public-navigation-links",
+      "featureTitle": "Add an 'Apply for Portal Access' link and an 'ID/Password Login' link to the public navigation and the Portal Selection page (`/portal`). On the public homepage (`HomePage.tsx`), add a visible call-to-action banner or card section titled 'New User? Apply for Portal Access' with a button linking to `/apply` and a secondary link 'Already have credentials? Login with your ID' linking to `/id-login`. On the Portal Selection page (`PortalSelectionPage.tsx`), add a footer row beneath the four portal cards with these two links. In the main Navigation component, add an 'Apply for Access' link and a 'ID Login' link in the unauthenticated public navigation links.",
+      "files": [
+        "frontend/src/components/layout/Navigation.tsx",
+        "frontend/src/pages/HomePage.tsx",
         "frontend/src/pages/PortalSelectionPage.tsx"
       ],
       "components": [
@@ -19,18 +87,15 @@
         "http-outcalls@3.0.0"
       ],
       "testIds": [
-        "REQ-34"
+        "REQ-48"
       ],
       "confidence": "high"
     },
     {
-      "featureId": "feature-create-four-dedicated-role-specific-login-pages-login-student-login-staff-login-admin-and-login-parent-each-branded-with-the-role-name-and-a-short-description-e-g-student-portal-access-your-courses-results-and-fee-statements-each-page-must-show-an-login-with-internet-identity-button-that-triggers-the-internet-identity-login-flow-after-successful-login-if-the-user-already-has-a-profile-with-the-matching-role-redirect-them-directly-to-their-role-dashboard-if-the-user-has-no-profile-yet-pre-select-the-matching-role-in-the-profilesetupmodal-so-the-role-dropdown-defaults-to-the-role-corresponding-to-the-login-page-they-used-before-prompting-them-to-complete-profile-setup-this-eliminates-the-need-for-the-user-to-manually-choose-their-role-after-logging-in-via-a-role-specific-portal-page",
-      "featureTitle": "Create four dedicated role-specific login pages — /login/student, /login/staff, /login/admin, and /login/parent — each branded with the role name and a short description (e.g., 'Student Portal — Access your courses, results, and fee statements'). Each page must show an 'Login with Internet Identity' button that triggers the Internet Identity login flow. After successful login, if the user already has a profile with the matching role, redirect them directly to their role dashboard. If the user has no profile yet, pre-select the matching role in the ProfileSetupModal (so the role dropdown defaults to the role corresponding to the login page they used) before prompting them to complete profile setup. This eliminates the need for the user to manually choose their role after logging in via a role-specific portal page.",
+      "featureId": "feature-add-react-query-hooks-in-frontend-src-hooks-usequeries-ts-for-the-new-portal-access-application-backend-functions-usesubmitportalaccessapplication-mutation-calling-submitportalaccessapplication-usegetportalaccessapplications-query-calling-getportalaccessapplications-for-admin-use-useapproveportalaccessapplication-mutation-calling-approveportalaccessapplication-userejectportalaccessapplication-mutation-calling-rejectportalaccessapplication-usegetmyportalaccessapplication-email-query-calling-getmyportalaccessapplication-and-useloginwithidandpassword-mutation-calling-loginwithidandpassword-each-hook-must-follow-the-existing-patterns-in-usequeries-ts-using-the-authenticated-actor-for-admin-only-mutations-and-the-anonymous-actor-for-public-queries-mutations",
+      "featureTitle": "Add React Query hooks in `frontend/src/hooks/useQueries.ts` for the new portal access application backend functions: `useSubmitPortalAccessApplication` (mutation calling `submitPortalAccessApplication`), `useGetPortalAccessApplications` (query calling `getPortalAccessApplications`, for admin use), `useApprovePortalAccessApplication` (mutation calling `approvePortalAccessApplication`), `useRejectPortalAccessApplication` (mutation calling `rejectPortalAccessApplication`), `useGetMyPortalAccessApplication(email)` (query calling `getMyPortalAccessApplication`), and `useLoginWithIdAndPassword` (mutation calling `loginWithIdAndPassword`). Each hook must follow the existing patterns in `useQueries.ts` — using the authenticated actor for admin-only mutations and the anonymous actor for public queries/mutations.",
       "files": [
-        "frontend/src/App.tsx",
-        "frontend/src/components/auth/ProfileSetupModal.tsx",
-        "frontend/src/components/layout/Layout.tsx",
-        "frontend/src/pages/auth/RoleLoginPage.tsx"
+        "frontend/src/hooks/useQueries.ts"
       ],
       "components": [
         "authorization@4.0.0",
@@ -43,30 +108,7 @@
         "http-outcalls@3.0.0"
       ],
       "testIds": [
-        "REQ-35"
-      ],
-      "confidence": "high"
-    },
-    {
-      "featureId": "feature-update-the-public-homepage-and-the-navigation-component-so-that-the-portal-links-student-portal-staff-portal-admin-portal-parent-portal-that-were-previously-pointing-directly-to-dashboard-routes-now-point-to-the-corresponding-role-specific-login-pages-login-student-login-staff-login-admin-login-parent-for-unauthenticated-visitors-for-already-authenticated-users-with-a-confirmed-role-these-links-should-still-navigate-directly-to-their-respective-dashboards",
-      "featureTitle": "Update the public homepage and the Navigation component so that the portal links (Student Portal, Staff Portal, Admin Portal, Parent Portal) that were previously pointing directly to dashboard routes now point to the corresponding role-specific login pages (/login/student, /login/staff, /login/admin, /login/parent) for unauthenticated visitors. For already-authenticated users with a confirmed role, these links should still navigate directly to their respective dashboards.",
-      "files": [
-        "frontend/src/components/layout/Footer.tsx",
-        "frontend/src/components/layout/Navigation.tsx",
-        "frontend/src/pages/HomePage.tsx"
-      ],
-      "components": [
-        "authorization@4.0.0",
-        "stripe@3.0.0",
-        "core-infrastructure@1.0.2",
-        "shadcn-ui@1.0.0",
-        "build-template-react@1.0.0",
-        "initial-app@1.0.0",
-        "github-export-icp-cli@1.0.0",
-        "http-outcalls@3.0.0"
-      ],
-      "testIds": [
-        "REQ-36"
+        "REQ-49"
       ],
       "confidence": "high"
     }

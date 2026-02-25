@@ -1,77 +1,132 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-02-25T21:35:15.240Z",
+  "generatedAt": "2026-02-25T22:59:26.441Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
   },
   "requirements": {
-    "total": 3,
-    "implemented": 3,
+    "total": 6,
+    "implemented": 5,
     "items": [
       {
-        "id": "REQ-34",
-        "summary": "Create a Portal Selection page at /portal (or as a prominent section on the homepage) that displays four distinct portal entry cards: Student Portal, Staff Portal, Admin Portal, and Parent Portal. Each card must have a clear label, a brief description of the portal, and a 'Login' or 'Access Portal' button. Clicking a card navigates the visitor to that role's dedicated login page.",
+        "id": "REQ-44",
+        "summary": "In the Motoko backend, add a new stable data type `PortalAccessApplication` containing fields: applicantName (Text), email (Text), role (#student | #staff | #parent | #admin), programmeOrDepartment (Text, optional context), submittedAt (Int timestamp), status (#pending | #approved | #rejected), and generatedId (Text, the role-specific ID assigned on approval, e.g. matriculation number for students, staff ID for staff, parent ID for parents, admin ID for admins). Add a `generatedPassword` (Text) field to store the hashed or plaintext generated password. Store applications in a stable HashMap keyed by a unique application ID (Text). Implement the following backend functions: `submitPortalAccessApplication(name, email, role, programme) -> Result<Text, Text>` (returns assigned application reference), `approvePortalAccessApplication(appId) -> Result<{generatedId: Text; password: Text}, Text>` (admin-only, generates a role-specific ID and random password, stores them, marks status approved), `rejectPortalAccessApplication(appId) -> Result<(), Text>` (admin-only), `getPortalAccessApplications() -> [PortalAccessApplication]` (admin-only), `getMyPortalAccessApplication(email: Text) -> ?PortalAccessApplication` (public query by email), and `loginWithIdAndPassword(roleId: Text, password: Text) -> Result<UserProfile, Text>` (validates credentials and returns the associated profile).",
+        "status": "unknown",
+        "plannedFiles": [],
+        "matchedFiles": []
+      },
+      {
+        "id": "REQ-45",
+        "summary": "Create a public-facing Portal Access Application page at `/apply` (`frontend/src/pages/PortalAccessApplicationPage.tsx`). The page must display the university logo and heading 'Apply for Portal Access'. It must render a single-step form with fields: Full Name (text), Email Address (text), Role (dropdown: Student, Staff, Parent, Admin), and Programme/Department (text, labelled contextually based on role — 'Programme' for students, 'Department' for staff/admin, 'Ward's Programme' for parents). On submission, call the `submitPortalAccessApplication` backend function via a React Query mutation. On success, display a confirmation message: 'Your application has been submitted. You will receive your login credentials once your access is approved by the administrator.' On error, display a human-readable inline error message. The page must use the existing deep navy and gold academic theme.",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/pages/PortalSelectionPage.tsx",
+          "frontend/src/pages/PortalAccessApplicationPage.tsx",
           "frontend/src/App.tsx"
         ],
         "matchedFiles": [
-          "frontend/src/pages/PortalSelectionPage.tsx",
+          "frontend/src/pages/PortalAccessApplicationPage.tsx",
           "frontend/src/App.tsx"
         ]
       },
       {
-        "id": "REQ-35",
-        "summary": "Create four dedicated role-specific login pages — /login/student, /login/staff, /login/admin, and /login/parent — each branded with the role name and a short description (e.g., 'Student Portal — Access your courses, results, and fee statements'). Each page must show an 'Login with Internet Identity' button that triggers the Internet Identity login flow. After successful login, if the user already has a profile with the matching role, redirect them directly to their role dashboard. If the user has no profile yet, pre-select the matching role in the ProfileSetupModal (so the role dropdown defaults to the role corresponding to the login page they used) before prompting them to complete profile setup. This eliminates the need for the user to manually choose their role after logging in via a role-specific portal page.",
+        "id": "REQ-46",
+        "summary": "Add an 'Access Applications' section to the Admin Panel (`frontend/src/pages/admin/AccessApplicationsPage.tsx`) wrapped with RoleGuard (admin role). This page must fetch all portal access applications via `getPortalAccessApplications` and display them in a table with columns: Applicant Name, Email, Role, Programme/Department, Submitted Date, Status (badge), and an Actions column. For pending applications, show 'Approve' and 'Reject' buttons. Clicking 'Approve' calls `approvePortalAccessApplication` and on success shows a modal/toast displaying the generated Role ID and Password so the admin can communicate these credentials to the applicant (e.g., 'Student ID: MATRIC/2024/0001 | Password: Xk7#mP2q'). Clicking 'Reject' calls `rejectPortalAccessApplication`. After any action, immediately invalidate and refetch the applications list query. Add a link to this page in the Admin Dashboard sidebar under the label 'Access Applications'.",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/pages/auth/RoleLoginPage.tsx",
-          "frontend/src/App.tsx",
-          "frontend/src/components/auth/ProfileSetupModal.tsx",
-          "frontend/src/components/layout/Layout.tsx"
+          "frontend/src/pages/admin/AccessApplicationsPage.tsx",
+          "frontend/src/pages/admin/AdminDashboard.tsx",
+          "frontend/src/App.tsx"
         ],
         "matchedFiles": [
-          "frontend/src/pages/auth/RoleLoginPage.tsx",
-          "frontend/src/App.tsx",
-          "frontend/src/components/auth/ProfileSetupModal.tsx",
-          "frontend/src/components/layout/Layout.tsx"
+          "frontend/src/pages/admin/AccessApplicationsPage.tsx",
+          "frontend/src/pages/admin/AdminDashboard.tsx",
+          "frontend/src/App.tsx"
         ]
       },
       {
-        "id": "REQ-36",
-        "summary": "Update the public homepage and the Navigation component so that the portal links (Student Portal, Staff Portal, Admin Portal, Parent Portal) that were previously pointing directly to dashboard routes now point to the corresponding role-specific login pages (/login/student, /login/staff, /login/admin, /login/parent) for unauthenticated visitors. For already-authenticated users with a confirmed role, these links should still navigate directly to their respective dashboards.",
+        "id": "REQ-47",
+        "summary": "Create a dedicated ID/Password login page at `/id-login` (`frontend/src/pages/IdPasswordLoginPage.tsx`). This page must prominently display the university logo (from `/assets/generated/university-logo.dim_200x200.png` or the existing logo asset), the university name, and a login form with two fields: 'Your ID' (placeholder text changes based on a role selector: 'Enter Matriculation Number' for students, 'Enter Staff ID' for staff, 'Enter Parent ID' for parents, 'Enter Admin ID' for admins) and 'Password'. Include a Role selector (Student, Staff, Admin, Parent) above the ID field so the placeholder updates dynamically. On form submission, call the `loginWithIdAndPassword` backend function. On success, store the returned UserProfile in React Query state/context and redirect the user to their role-specific dashboard (`/student`, `/staff`, `/admin`, or `/parent`). On failure, display a clear inline error: 'Invalid ID or password. Please check your credentials or contact the administrator.' The page must use the deep navy and gold academic theme and be fully responsive.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/pages/IdPasswordLoginPage.tsx",
+          "frontend/src/App.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/pages/IdPasswordLoginPage.tsx",
+          "frontend/src/App.tsx"
+        ]
+      },
+      {
+        "id": "REQ-48",
+        "summary": "Add an 'Apply for Portal Access' link and an 'ID/Password Login' link to the public navigation and the Portal Selection page (`/portal`). On the public homepage (`HomePage.tsx`), add a visible call-to-action banner or card section titled 'New User? Apply for Portal Access' with a button linking to `/apply` and a secondary link 'Already have credentials? Login with your ID' linking to `/id-login`. On the Portal Selection page (`PortalSelectionPage.tsx`), add a footer row beneath the four portal cards with these two links. In the main Navigation component, add an 'Apply for Access' link and a 'ID Login' link in the unauthenticated public navigation links.",
         "status": "implemented",
         "plannedFiles": [
           "frontend/src/pages/HomePage.tsx",
-          "frontend/src/components/layout/Navigation.tsx",
-          "frontend/src/components/layout/Footer.tsx"
+          "frontend/src/pages/PortalSelectionPage.tsx",
+          "frontend/src/components/layout/Navigation.tsx"
         ],
         "matchedFiles": [
           "frontend/src/pages/HomePage.tsx",
-          "frontend/src/components/layout/Navigation.tsx",
-          "frontend/src/components/layout/Footer.tsx"
+          "frontend/src/pages/PortalSelectionPage.tsx",
+          "frontend/src/components/layout/Navigation.tsx"
+        ]
+      },
+      {
+        "id": "REQ-49",
+        "summary": "Add React Query hooks in `frontend/src/hooks/useQueries.ts` for the new portal access application backend functions: `useSubmitPortalAccessApplication` (mutation calling `submitPortalAccessApplication`), `useGetPortalAccessApplications` (query calling `getPortalAccessApplications`, for admin use), `useApprovePortalAccessApplication` (mutation calling `approvePortalAccessApplication`), `useRejectPortalAccessApplication` (mutation calling `rejectPortalAccessApplication`), `useGetMyPortalAccessApplication(email)` (query calling `getMyPortalAccessApplication`), and `useLoginWithIdAndPassword` (mutation calling `loginWithIdAndPassword`). Each hook must follow the existing patterns in `useQueries.ts` — using the authenticated actor for admin-only mutations and the anonymous actor for public queries/mutations.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/hooks/useQueries.ts"
+        ],
+        "matchedFiles": [
+          "frontend/src/hooks/useQueries.ts"
         ]
       }
     ]
   },
   "changedFiles": [
+    "backend/main.mo",
     "build-request.json",
-    "build-template/README.md",
-    "caffeine.lock.json",
     "feature_evidence.json",
     "frontend-file-summaries.txt",
     "frontend-implementation-plan.json",
     "frontend/src/App.tsx",
-    "frontend/src/components/auth/ProfileSetupModal.tsx",
-    "frontend/src/components/layout/Footer.tsx",
+    "frontend/src/backend.d.ts",
+    "frontend/src/backend.ts",
+    "frontend/src/components/RoleGuard.tsx",
+    "frontend/src/components/admin/AdminSetupCard.tsx",
+    "frontend/src/components/auth/RoleGuard.tsx",
     "frontend/src/components/layout/Layout.tsx",
     "frontend/src/components/layout/Navigation.tsx",
+    "frontend/src/components/payments/StripeSetup.tsx",
+    "frontend/src/declarations/backend.did.d.ts",
+    "frontend/src/declarations/backend.did.js",
+    "frontend/src/hooks/useQueries.ts",
+    "frontend/src/pages/AdmissionCheckerPage.tsx",
     "frontend/src/pages/HomePage.tsx",
+    "frontend/src/pages/IdPasswordLoginPage.tsx",
+    "frontend/src/pages/PaymentSuccessPage.tsx",
+    "frontend/src/pages/PortalAccessApplicationPage.tsx",
     "frontend/src/pages/PortalSelectionPage.tsx",
-    "frontend/src/pages/auth/RoleLoginPage.tsx",
+    "frontend/src/pages/admin/AccessApplicationsPage.tsx",
+    "frontend/src/pages/admin/AdminDashboard.tsx",
+    "frontend/src/pages/admin/AdmissionsManagementPage.tsx",
+    "frontend/src/pages/admin/FeeManagementPage.tsx",
+    "frontend/src/pages/admin/HostelManagementPage.tsx",
+    "frontend/src/pages/admin/MessagingPage.tsx",
+    "frontend/src/pages/admin/ProgrammeManagementPage.tsx",
+    "frontend/src/pages/admin/ResultsManagementPage.tsx",
+    "frontend/src/pages/admin/StaffManagementPage.tsx",
+    "frontend/src/pages/admin/StudentManagementPage.tsx",
+    "frontend/src/pages/parent/ParentDashboard.tsx",
+    "frontend/src/pages/student/CourseRegistrationPage.tsx",
+    "frontend/src/pages/student/FeeStatementPage.tsx",
+    "frontend/src/pages/student/HostelApplicationPage.tsx",
+    "frontend/src/pages/student/ResultsPage.tsx",
+    "frontend/src/pages/student/StudentDashboard.tsx",
+    "frontend/src/pages/student/TranscriptPage.tsx",
     "project_state.json",
     "scratch/component-selection.json",
     "spec.md",

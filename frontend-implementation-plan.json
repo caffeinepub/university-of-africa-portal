@@ -1,89 +1,130 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Add role-based portal login landing pages for each access category",
+  "title": "Portal Access Application System with ID/Password Login - Frontend Implementation",
   "requirements": [
     {
-      "id": "REQ-34",
-      "summary": "Create Portal Selection page at /portal with four distinct portal entry cards for Student, Staff, Admin, and Parent portals that navigate to role-specific login pages",
+      "id": "REQ-45",
+      "summary": "Create a public Portal Access Application page at /apply where users can submit applications for portal access by providing their name, email, role, and programme/department",
       "acceptanceCriteria": [
-        "A Portal Selection page exists with four cards: Student Portal, Staff Portal, Admin Portal, and Parent Portal.",
-        "Each card has a descriptive label and an action button.",
-        "Clicking a card navigates to that role's dedicated login page (e.g., /login/student, /login/staff, /login/admin, /login/parent).",
-        "The portal selection page is accessible from the public navigation bar and the homepage portal links.",
-        "Unauthenticated visitors can access this page without logging in."
+        "The page is accessible at `/apply` without authentication.",
+        "The form collects Full Name, Email, Role, and Programme/Department.",
+        "Submitting the form calls the backend `submitPortalAccessApplication` function.",
+        "A success confirmation message is shown on successful submission.",
+        "Inline error messages are shown on failure.",
+        "The page uses the existing deep navy and gold theme with the university logo visible."
       ],
       "file_operations": [
         {
-          "path": "frontend/src/pages/PortalSelectionPage.tsx",
+          "path": "frontend/src/pages/PortalAccessApplicationPage.tsx",
           "operation": "create",
-          "description": "Create a new public page component that displays four portal entry cards (Student, Staff, Admin, Parent). Each card includes a role title, brief description of the portal's purpose, and a button linking to the corresponding role-specific login page (/login/student, /login/staff, /login/admin, /login/parent). Use responsive grid layout with shadcn/ui Card components and maintain the existing navy-and-gold design system."
+          "description": "Create a public-facing portal access application page displaying the university logo (from frontend/public/assets/generated/university-crest.dim_256x256.png) and heading 'Apply for Portal Access'. Render a form with fields: Full Name (text), Email Address (text), Role (dropdown: Student, Staff, Parent, Admin), and Programme/Department (text input with label changing contextually based on selected role: 'Programme' for students, 'Department' for staff/admin, 'Ward's Programme' for parents). On submit, use the useSubmitPortalAccessApplication mutation hook. Display success message 'Your application has been submitted. You will receive your login credentials once your access is approved by the administrator.' on success, or inline error on failure. Style with existing deep navy and gold academic theme."
         },
         {
           "path": "frontend/src/App.tsx",
           "operation": "modify",
-          "description": "Add a new public route for /portal that renders the PortalSelectionPage component. Place this route alongside other public routes (before the authenticated role-based routes)."
+          "description": "Add a new public route '/apply' that renders the PortalAccessApplicationPage component without authentication guards."
         }
       ]
     },
     {
-      "id": "REQ-35",
-      "summary": "Create four dedicated role-specific login pages with Internet Identity authentication that pre-select the corresponding role in ProfileSetupModal for new users",
+      "id": "REQ-46",
+      "summary": "Add an Access Applications management section to the Admin Panel where admins can review, approve, or reject pending portal access applications and view generated credentials",
       "acceptanceCriteria": [
-        "Routes /login/student, /login/staff, /login/admin, and /login/parent each render a distinct role-branded login page.",
-        "Each login page displays the role name prominently and a brief portal description.",
-        "Clicking 'Login with Internet Identity' on any of these pages triggers the standard Internet Identity authentication flow.",
-        "After successful authentication, if a profile already exists with the correct role, the user is immediately redirected to their role's dashboard (/student, /staff, /admin, or /parent).",
-        "If no profile exists yet, the ProfileSetupModal opens with the role field pre-filled and locked to the role corresponding to the login page visited.",
-        "After profile setup is completed from a role-specific login page, the user is redirected to the correct role dashboard.",
-        "If an authenticated user with an existing mismatched role lands on a role-specific login page, show a message indicating they are already registered under a different role and provide a link to their actual dashboard."
+        "The page is accessible at `/admin/access-applications` and is wrapped with RoleGuard requiring admin role.",
+        "All submitted applications are listed in a table with Name, Email, Role, Programme, Date, Status columns.",
+        "Pending applications show 'Approve' and 'Reject' action buttons.",
+        "Approving an application displays the generated Role ID and Password in a prominent modal or toast.",
+        "Rejecting an application updates the status to 'Rejected' immediately in the list.",
+        "The Admin sidebar includes a link labelled 'Access Applications' pointing to this page.",
+        "React Query list is invalidated and refetched after approve/reject actions."
       ],
       "file_operations": [
         {
-          "path": "frontend/src/pages/auth/RoleLoginPage.tsx",
+          "path": "frontend/src/pages/admin/AccessApplicationsPage.tsx",
           "operation": "create",
-          "description": "Create a parameterized role-specific login page component that accepts a role prop (student, staff, admin, or parent). Display the role name and portal description prominently. Include a 'Login with Internet Identity' button that triggers the useInternetIdentity login flow. After successful authentication, check if the user has an existing profile using useGetCallerUserProfile. If a profile exists and matches the target role, redirect to the appropriate dashboard (/student, /staff, /admin, or /parent). If a profile exists but the role does not match, display a message with a link to their actual dashboard. If no profile exists, the Layout component will automatically open the ProfileSetupModal with the defaultRole prop set to the target role. Use the authorization component's authentication patterns and handle all login states (logging-in, authenticated, error)."
+          "description": "Create an admin page wrapped with RoleGuard (admin role) that fetches all portal access applications via useGetPortalAccessApplications query hook. Display applications in a table with columns: Applicant Name, Email, Role, Programme/Department, Submitted Date (formatted from timestamp), Status (rendered as badge with color coding: yellow for pending, green for approved, red for rejected), and Actions column. For pending applications, render 'Approve' and 'Reject' buttons. Clicking Approve calls useApprovePortalAccessApplication mutation and on success displays a modal/dialog showing the generated Role ID and Password (e.g., 'Student ID: MATRIC/2024/0001 | Password: Xk7#mP2q') for the admin to communicate to the applicant. Clicking Reject calls useRejectPortalAccessApplication mutation. Both mutations invalidate the applications query on success to trigger refetch. Include admin sidebar navigation."
+        },
+        {
+          "path": "frontend/src/pages/admin/AdminDashboard.tsx",
+          "operation": "modify",
+          "description": "Add a 'Access Applications' link to the admin sidebar navigation that routes to '/admin/access-applications'. Position it logically among other admin management links (e.g., below Student Management or Staff Management)."
         },
         {
           "path": "frontend/src/App.tsx",
           "operation": "modify",
-          "description": "Add four new public routes for /login/student, /login/staff, /login/admin, and /login/parent that each render the RoleLoginPage component with the corresponding role prop. Place these routes in the public section before the authenticated role-based routes."
-        },
-        {
-          "path": "frontend/src/components/auth/ProfileSetupModal.tsx",
-          "operation": "modify",
-          "description": "Add an optional defaultRole prop of type UserRole to the ProfileSetupModal component. When defaultRole is provided, pre-select that role in the role dropdown and disable the role selection field (make it read-only or disabled) so the user cannot change it. Update the form initialization to use the defaultRole if present. Ensure the existing form validation and submission logic using saveCallerUserProfile mutation remains unchanged."
-        },
-        {
-          "path": "frontend/src/components/layout/Layout.tsx",
-          "operation": "modify",
-          "description": "Update the Layout component to accept and pass through an optional defaultRole prop to the ProfileSetupModal. This allows parent components (like RoleLoginPage) to specify which role should be pre-selected when the modal opens for new users. The modal should only open when isAuthenticated is true, userProfile is null, and profile data has finished loading (isFetched is true), preventing modal flash on page load."
+          "description": "Add a new admin route '/admin/access-applications' that renders the AccessApplicationsPage component wrapped with appropriate guards."
         }
       ]
     },
     {
-      "id": "REQ-36",
-      "summary": "Update homepage and Navigation component portal links to route unauthenticated visitors to role-specific login pages instead of directly to dashboards",
+      "id": "REQ-47",
+      "summary": "Create a dedicated ID/Password login page at /id-login where users can authenticate using their role-specific ID (matriculation number, staff ID, parent ID, or admin ID) and password",
       "acceptanceCriteria": [
-        "Homepage portal cards and navigation portal links route unauthenticated visitors to /login/{role} pages instead of directly to protected dashboard routes.",
-        "Authenticated users with a confirmed role clicking portal links are routed directly to their dashboards.",
-        "No broken links or 404 errors occur when navigating from portal entry points."
+        "The page is accessible at `/id-login` without authentication.",
+        "The university logo and name are displayed prominently at the top of the login form.",
+        "A Role selector (Student, Staff, Admin, Parent) is present and updates the ID field placeholder text accordingly.",
+        "Submitting the form calls `loginWithIdAndPassword` with the entered ID and password.",
+        "On success, the user is redirected to their role dashboard (`/student`, `/staff`, `/admin`, or `/parent`).",
+        "On failure, an inline error message 'Invalid ID or password. Please check your credentials or contact the administrator.' is shown.",
+        "The page is styled with the deep navy and gold academic theme and is mobile responsive."
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/pages/IdPasswordLoginPage.tsx",
+          "operation": "create",
+          "description": "Create a public login page at /id-login displaying the university logo (from frontend/public/assets/generated/university-crest.dim_256x256.png), university name, and a login form. Include a Role selector dropdown (Student, Staff, Admin, Parent) that dynamically updates the ID input field placeholder text: 'Enter Matriculation Number' for students, 'Enter Staff ID' for staff, 'Enter Parent ID' for parents, 'Enter Admin ID' for admins. Include a Password input field. On form submission, call useLoginWithIdAndPassword mutation hook with roleId and password. On success, store the returned UserProfile in React Query state (via saveCallerUserProfile or similar mechanism) and redirect to the role-specific dashboard: /student for student role, /staff for staff role, /admin for admin role, /parent for parent role. On failure, display inline error message: 'Invalid ID or password. Please check your credentials or contact the administrator.' Style with deep navy and gold academic theme, ensure mobile responsiveness."
+        },
+        {
+          "path": "frontend/src/App.tsx",
+          "operation": "modify",
+          "description": "Add a new public route '/id-login' that renders the IdPasswordLoginPage component without authentication guards."
+        }
+      ]
+    },
+    {
+      "id": "REQ-48",
+      "summary": "Add navigation links to 'Apply for Portal Access' and 'ID/Password Login' on the public homepage, portal selection page, and main navigation to guide users to the new application and login flows",
+      "acceptanceCriteria": [
+        "The public homepage displays a banner or card section with a button linking to `/apply`.",
+        "The homepage also shows a secondary link to `/id-login` for users who already have credentials.",
+        "The Portal Selection page at `/portal` shows links to both `/apply` and `/id-login` beneath the four role cards.",
+        "The top navigation bar shows 'Apply for Access' and 'ID Login' links to unauthenticated visitors."
       ],
       "file_operations": [
         {
           "path": "frontend/src/pages/HomePage.tsx",
           "operation": "modify",
-          "description": "Update the portal cards section on the HomePage to link unauthenticated visitors to the new role-specific login pages (/login/student, /login/staff, /login/admin, /login/parent) instead of directly to dashboard routes. For authenticated users with an existing profile and matching role, keep the direct dashboard links. Use the isAuthenticated state from useInternetIdentity and the userProfile from useGetCallerUserProfile to determine the appropriate link destination for each portal card."
+          "description": "Add a visible call-to-action banner or card section titled 'New User? Apply for Portal Access' with a primary button linking to '/apply' and a secondary link/button 'Already have credentials? Login with your ID' linking to '/id-login'. Position this section prominently on the homepage (e.g., after the hero banner or stats section). Style consistently with the existing deep navy and gold academic theme."
+        },
+        {
+          "path": "frontend/src/pages/PortalSelectionPage.tsx",
+          "operation": "modify",
+          "description": "Add a footer row beneath the four portal selection cards with two prominent links: 'Apply for Portal Access' linking to '/apply' and 'Login with ID & Password' linking to '/id-login'. Style these links as buttons or inline links with appropriate spacing and alignment."
         },
         {
           "path": "frontend/src/components/layout/Navigation.tsx",
           "operation": "modify",
-          "description": "Update the portal links in the Navigation component to route unauthenticated visitors to the role-specific login pages (/login/student, /login/staff, /login/admin, /login/parent) instead of directly to protected dashboard routes. For authenticated users with a confirmed role in their profile, maintain direct navigation to their role's dashboard. Add a new 'Portals' link in the public navigation that routes to /portal (the Portal Selection page). Use isAuthenticated and userProfile state to conditionally render the correct link destinations."
-        },
+          "description": "Add 'Apply for Access' link (pointing to '/apply') and 'ID Login' link (pointing to '/id-login') to the public/unauthenticated navigation links section. Position these links logically among other public links (e.g., Home, Admissions, Portal). Ensure they are only visible when the user is not authenticated."
+        }
+      ]
+    },
+    {
+      "id": "REQ-49",
+      "summary": "Add React Query hooks for all portal access application backend functions to enable frontend interaction with the new backend capabilities",
+      "acceptanceCriteria": [
+        "`useSubmitPortalAccessApplication` mutation hook exists and calls the backend function correctly.",
+        "`useGetPortalAccessApplications` query hook exists, uses the authenticated actor, and is usable on the admin Access Applications page.",
+        "`useApprovePortalAccessApplication` and `useRejectPortalAccessApplication` mutation hooks exist, use the authenticated actor, and invalidate the applications list query on success.",
+        "`useGetMyPortalAccessApplication` query hook exists and uses the anonymous actor.",
+        "`useLoginWithIdAndPassword` mutation hook exists and uses the anonymous actor.",
+        "All hooks follow existing naming conventions and patterns in `useQueries.ts`."
+      ],
+      "file_operations": [
         {
-          "path": "frontend/src/components/layout/Footer.tsx",
+          "path": "frontend/src/hooks/useQueries.ts",
           "operation": "modify",
-          "description": "Update the portal quick links in the Footer component to route unauthenticated visitors to the role-specific login pages (/login/student, /login/staff, /login/admin, /login/parent). For authenticated users with a confirmed profile role, keep direct dashboard navigation. Use the isAuthenticated state and userProfile to determine link destinations, similar to the Navigation component."
+          "description": "Add six new React Query hooks following existing patterns in the file: 1) useSubmitPortalAccessApplication (mutation, anonymous actor, accepts name, email, role, programmeOrDepartment parameters, calls backend submitPortalAccessApplication), 2) useGetPortalAccessApplications (query, authenticated actor, calls backend getPortalAccessApplications, query key ['portalAccessApplications']), 3) useApprovePortalAccessApplication (mutation, authenticated actor, accepts appId parameter, calls backend approvePortalAccessApplication, invalidates ['portalAccessApplications'] query on success), 4) useRejectPortalAccessApplication (mutation, authenticated actor, accepts appId parameter, calls backend rejectPortalAccessApplication, invalidates ['portalAccessApplications'] query on success), 5) useGetMyPortalAccessApplication (query, anonymous actor, accepts email parameter, calls backend getMyPortalAccessApplication, query key ['myPortalAccessApplication', email]), 6) useLoginWithIdAndPassword (mutation, anonymous actor, accepts roleId and password parameters, calls backend loginWithIdAndPassword). Ensure proper TypeScript types using backend interface types from backend.d.ts."
         }
       ]
     }

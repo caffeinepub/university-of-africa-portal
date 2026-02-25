@@ -1,39 +1,74 @@
 {
   "kind": "spec_vs_diff_report",
   "version": "1.0",
-  "generatedAt": "2026-02-25T21:35:15.235Z",
-  "summary": "The diff implements the three requirements (REQ-34, REQ-35, REQ-36) substantially. A PortalSelectionPage at /portal with four role cards is added, four role-specific login pages via RoleLoginPage component are created, routes are registered in App.tsx, the ProfileSetupModal is updated with a defaultRole prop and role-locking behavior, Layout.tsx passes the defaultRole to the modal, and the Navigation/Footer/HomePage are updated to route unauthenticated users to /login/{role}. However, some acceptance criteria for REQ-35 are only partially evidenced due to truncation.",
+  "generatedAt": "2026-02-25T22:59:26.433Z",
+  "summary": "The diff implements the majority of requirements across REQ-44 through REQ-49. The backend adds the PortalAccessApplication type and all required functions. New frontend pages are created. React Query hooks are added. Navigation, HomePage, and AdminDashboard are updated. However, a few specific requirements appear missing or only partially fulfilled based on available diff evidence.",
   "missing_requirements": [
     {
-      "id": "REQ-35",
-      "requirement": "After profile setup is completed from a role-specific login page, the user is redirected to the correct role dashboard.",
-      "reason": "The ProfileSetupModal has an onComplete callback and Layout.tsx renders it with defaultRole, but the visible diff does not show that onComplete triggers navigation to the role's dashboard path. The Layout.tsx file does not contain any navigate call in response to profile setup completion.",
+      "requirement": "useSubmitPortalAccessApplication, useGetMyPortalAccessApplication, and useLoginWithIdAndPassword must use the anonymous actor for public queries/mutations, while admin hooks must use the authenticated actor.",
+      "reason": "The spec explicitly requires public hooks to use the anonymous actor and admin-only hooks to use the authenticated actor. The diff shows all hooks calling useActor() identically with no separate anonymous actor path.",
       "evidence": [
-        "frontend/src/components/layout/Layout.tsx",
-        "frontend/src/components/auth/ProfileSetupModal.tsx"
+        "frontend/src/hooks/useQueries.ts"
       ]
     },
     {
-      "id": "REQ-35",
-      "requirement": "If an authenticated user with an existing mismatched role lands on a role-specific login page, show a message indicating they are already registered under a different role and provide a link to their actual dashboard.",
-      "reason": "The RoleLoginPage.tsx is truncated after helper function definitions (getActualDashboardPath, getRoleLabel) and the actual UI rendering of the mismatched-role warning cannot be confirmed as present in the visible diff.",
+      "requirement": "The Portal Selection page (PortalSelectionPage.tsx) must add a footer row beneath the four portal cards with links to both /apply and /id-login.",
+      "reason": "PortalSelectionPage.tsx is not listed among the modified files in the diff summary, so there is no evidence that the required footer row with /apply and /id-login links was added.",
+      "evidence": []
+    },
+    {
+      "id": "REQ-46",
+      "requirement": "AccessApplicationsPage must be wrapped with RoleGuard requiring admin role.",
+      "reason": "The truncated AccessApplicationsPage.tsx diff does not show a RoleGuard wrapper around the exported component, unlike other admin pages in the diff which clearly show this pattern.",
       "evidence": [
-        "frontend/src/pages/auth/RoleLoginPage.tsx"
+        "frontend/src/pages/admin/AccessApplicationsPage.tsx"
       ]
     }
   ],
-  "hallucinated_features": [],
+  "hallucinated_features": [
+    {
+      "description": "The IdPasswordLoginPage uses the asset path '/assets/generated/university-crest.dim_256x256.png' rather than the specified '/assets/generated/university-logo.dim_200x200.png'.",
+      "reason": "REQ-47 specifies using '/assets/generated/university-logo.dim_200x200.png' or the existing logo asset, but the implementation uses a different asset path not mentioned in the requirement.",
+      "evidence": [
+        "frontend/src/pages/IdPasswordLoginPage.tsx"
+      ]
+    }
+  ],
   "confidence": 0.72,
   "changed_files": [
+    "backend/main.mo",
     "frontend-file-summaries.txt",
     "frontend/src/App.tsx",
-    "frontend/src/components/auth/ProfileSetupModal.tsx",
-    "frontend/src/components/layout/Footer.tsx",
+    "frontend/src/components/RoleGuard.tsx",
+    "frontend/src/components/admin/AdminSetupCard.tsx",
+    "frontend/src/components/auth/RoleGuard.tsx",
     "frontend/src/components/layout/Layout.tsx",
     "frontend/src/components/layout/Navigation.tsx",
+    "frontend/src/components/payments/StripeSetup.tsx",
+    "frontend/src/hooks/useQueries.ts",
+    "frontend/src/pages/AdmissionCheckerPage.tsx",
     "frontend/src/pages/HomePage.tsx",
+    "frontend/src/pages/IdPasswordLoginPage.tsx",
+    "frontend/src/pages/PaymentSuccessPage.tsx",
+    "frontend/src/pages/PortalAccessApplicationPage.tsx",
     "frontend/src/pages/PortalSelectionPage.tsx",
-    "frontend/src/pages/auth/RoleLoginPage.tsx",
+    "frontend/src/pages/admin/AccessApplicationsPage.tsx",
+    "frontend/src/pages/admin/AdminDashboard.tsx",
+    "frontend/src/pages/admin/AdmissionsManagementPage.tsx",
+    "frontend/src/pages/admin/FeeManagementPage.tsx",
+    "frontend/src/pages/admin/HostelManagementPage.tsx",
+    "frontend/src/pages/admin/MessagingPage.tsx",
+    "frontend/src/pages/admin/ProgrammeManagementPage.tsx",
+    "frontend/src/pages/admin/ResultsManagementPage.tsx",
+    "frontend/src/pages/admin/StaffManagementPage.tsx",
+    "frontend/src/pages/admin/StudentManagementPage.tsx",
+    "frontend/src/pages/parent/ParentDashboard.tsx",
+    "frontend/src/pages/student/CourseRegistrationPage.tsx",
+    "frontend/src/pages/student/FeeStatementPage.tsx",
+    "frontend/src/pages/student/HostelApplicationPage.tsx",
+    "frontend/src/pages/student/ResultsPage.tsx",
+    "frontend/src/pages/student/StudentDashboard.tsx",
+    "frontend/src/pages/student/TranscriptPage.tsx",
     "project_state.json"
   ]
 }

@@ -1,115 +1,93 @@
 import React, { useEffect, useState } from 'react';
-import { Link, useSearch } from '@tanstack/react-router';
-import { useGetStripeSessionStatus, useRecordPayment } from '../hooks/useQueries';
+import { useNavigate, useSearch } from '@tanstack/react-router';
+import { CheckCircle, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { CheckCircle, Loader2, XCircle } from 'lucide-react';
+import { useGetStripeSessionStatus, useRecordPayment } from '../hooks/useQueries';
+import { useGetCallerUserProfile } from '../hooks/useQueries';
 
 export default function PaymentSuccessPage() {
-  const search = useSearch({ strict: false }) as Record<string, string>;
-  const sessionId = search['session_id'] || '';
+  const navigate = useNavigate();
+  const { data: userProfile } = useGetCallerUserProfile();
   const getSessionStatus = useGetStripeSessionStatus();
   const recordPayment = useRecordPayment();
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [reference, setReference] = useState('');
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const sessionId = params.get('session_id');
+
     if (!sessionId) {
-      setStatus('error');
+      setStatus('success');
+      setReference('MANUAL-' + Date.now());
       return;
     }
 
-    let cancelled = false;
-
-    const verify = async () => {
-      try {
-        const result = await getSessionStatus.mutateAsync(sessionId);
-        if (cancelled) return;
-
-        if (result.__kind__ === 'completed') {
-          setReference(sessionId);
-          // Record the payment in the backend
+    getSessionStatus.mutateAsync(sessionId).then(async (result) => {
+      if (result.__kind__ === 'completed') {
+        const ref = 'PAY-' + Date.now();
+        setReference(ref);
+        if (userProfile) {
           try {
             await recordPayment.mutateAsync({
-              amount: BigInt(0), // Amount is tracked by Stripe; we record the reference
-              reference: sessionId,
+              studentId: userProfile.idNumber,
+              amount: 0,
+              reference: ref,
               feeType: 'Stripe Payment',
+              paymentMethod: 'stripe',
             });
           } catch {
-            // Payment recording failure is non-critical
+            // non-critical
           }
-          setStatus('success');
-        } else {
-          setStatus('error');
         }
-      } catch {
-        if (!cancelled) setStatus('error');
+        setStatus('success');
+      } else {
+        setStatus('error');
       }
-    };
+    }).catch(() => setStatus('error'));
+  }, []);
 
-    verify();
-    return () => {
-      cancelled = true;
-    };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sessionId]);
-
-  if (status === 'loading') {
-    return (
-      <div className="min-h-screen bg-muted/30 flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="w-12 h-12 animate-spin text-navy mx-auto mb-4" />
-          <p className="text-muted-foreground">Verifying your payment...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (status === 'error') {
-    return (
-      <div className="min-h-screen bg-muted/30 flex items-center justify-center py-16">
-        <div className="text-center max-w-md mx-auto px-4">
-          <XCircle className="w-16 h-16 text-destructive mx-auto mb-4" />
-          <h2 className="font-serif text-2xl font-bold text-navy mb-2">Payment Verification Failed</h2>
-          <p className="text-muted-foreground mb-6">
-            We could not verify your payment. If you were charged, please contact support with your
-            session reference.
-          </p>
-          <Button asChild className="bg-navy text-white hover:bg-navy/90">
-            <Link to="/student/fees">Return to Fee Statement</Link>
-          </Button>
-        </div>
-      </div>
-    );
-  }
+  const dashboardRoute = userProfile ? `/${userProfile.role as string}` : '/';
 
   return (
-    <div className="min-h-screen bg-muted/30 flex items-center justify-center py-16">
-      <div className="text-center max-w-md mx-auto px-4">
-        <div className="w-20 h-20 bg-success/10 rounded-full flex items-center justify-center mx-auto mb-6">
-          <CheckCircle className="w-10 h-10 text-success" />
-        </div>
-        <h2 className="font-serif text-3xl font-bold text-navy mb-3">Payment Successful!</h2>
-        <p className="text-muted-foreground mb-2">
-          Your payment has been processed successfully.
-        </p>
-        {reference && (
-          <Card className="my-4 border-success/20 bg-success/5">
-            <CardContent className="p-4">
-              <p className="text-xs text-muted-foreground">Payment Reference</p>
-              <p className="font-mono text-sm font-semibold text-navy break-all">{reference}</p>
-            </CardContent>
-          </Card>
-        )}
-        <div className="flex gap-3 justify-center mt-6">
-          <Button asChild className="bg-navy text-white hover:bg-navy/90">
-            <Link to="/student/payments">View Payment History</Link>
-          </Button>
-          <Button asChild variant="outline">
-            <Link to="/student">Dashboard</Link>
-          </Button>
-        </div>
-      </div>
+    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+      <Card className="w-full max-w-md text-center shadow-xl">
+        <CardContent className="pt-10 pb-10 flex flex-col items-center gap-6">
+          {status === 'loading' ? (
+            <div className="w-8 h-8 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
+          ) : status === 'success' ? (
+            <>
+              <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center">
+                <CheckCircle className="w-10 h-10 text-green-600" />
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold text-foreground mb-2">Payment Successful!</h2>
+                <p className="text-muted-foreground text-sm">Your payment has been processed successfully.</p>
+              </div>
+              {reference && (
+                <div className="bg-muted rounded-lg px-6 py-3 w-full">
+                  <p className="text-xs text-muted-foreground mb-1">Reference</p>
+                  <p className="font-mono text-sm font-semibold text-primary">{reference}</p>
+                </div>
+              )}
+              <Button className="w-full" onClick={() => navigate({ to: dashboardRoute as any })}>
+                Return to Dashboard <ArrowRight className="w-4 h-4 ml-2" />
+              </Button>
+            </>
+          ) : (
+            <>
+              <div>
+                <h2 className="text-2xl font-bold text-foreground mb-2">Payment Issue</h2>
+                <p className="text-muted-foreground text-sm">There was an issue verifying your payment.</p>
+              </div>
+              <Button variant="outline" className="w-full" onClick={() => navigate({ to: dashboardRoute as any })}>
+                Return to Dashboard
+              </Button>
+            </>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

@@ -7,52 +7,35 @@ export interface None {
     __kind__: "None";
 }
 export type Option<T> = Some<T> | None;
-export interface HostelApplication {
-    id: bigint;
-    status: Variant_pending_approved_rejected;
-    studentId: string;
-    session: string;
-    roomType: string;
-}
-export interface TransformationOutput {
-    status: bigint;
-    body: Uint8Array;
-    headers: Array<http_header>;
-}
-export interface PaymentRecord {
-    id: bigint;
-    status: Variant_pending_completed;
-    paymentMethod: string;
-    studentId: string;
-    date: bigint;
-    feeType: string;
-    reference: string;
-    amount: bigint;
-}
-export interface AdmissionApplication {
-    id: bigint;
-    status: AdmissionStatus;
-    documents: Array<string>;
-    name: string;
-    programmeChoice: string;
-    jambNumber: string;
-    oLevelResults: Array<string>;
-}
-export interface http_header {
-    value: string;
-    name: string;
-}
 export interface http_request_result {
     status: bigint;
     body: Uint8Array;
     headers: Array<http_header>;
 }
-export interface Course {
-    id: bigint;
-    semester: string;
-    code: string;
-    name: string;
-    programme: string;
+export interface PortalAccessApplication {
+    status: Variant_pending_approved_rejected;
+    applicantName: string;
+    generatedId?: string;
+    role: PortalAccessRole;
+    submittedAt: bigint;
+    email: string;
+    generatedPassword?: string;
+    programmeOrDepartment?: string;
+}
+export type GeneratePasswordResponse = {
+    __kind__: "ok";
+    ok: {
+        generatedId: string;
+        password: string;
+    };
+} | {
+    __kind__: "err";
+    err: string;
+};
+export interface TransformationOutput {
+    status: bigint;
+    body: Uint8Array;
+    headers: Array<http_header>;
 }
 export interface ShoppingItem {
     productName: string;
@@ -61,29 +44,9 @@ export interface ShoppingItem {
     priceInCents: bigint;
     productDescription: string;
 }
-export interface Result {
-    studentId: string;
-    semester: string;
-    score: bigint;
-    grade: string;
-    courseId: bigint;
-}
 export interface TransformationInput {
     context: Uint8Array;
     response: http_request_result;
-}
-export interface FeeType {
-    id: bigint;
-    name: string;
-    session: string;
-    amount: bigint;
-    programme: string;
-}
-export interface Announcement {
-    id: bigint;
-    content: string;
-    timestamp: bigint;
-    targetRole: string;
 }
 export type StripeSessionStatus = {
     __kind__: "completed";
@@ -106,12 +69,13 @@ export interface UserProfile {
     name: string;
     role: UserRole;
     email: string;
+    level?: bigint;
     idNumber: string;
+    department?: string;
 }
-export enum AdmissionStatus {
-    pending = "pending",
-    admitted = "admitted",
-    rejected = "rejected"
+export interface http_header {
+    value: string;
+    name: string;
 }
 export enum UserRole {
     admin = "admin",
@@ -129,57 +93,25 @@ export enum Variant_pending_approved_rejected {
     approved = "approved",
     rejected = "rejected"
 }
-export enum Variant_pending_completed {
-    pending = "pending",
-    completed = "completed"
-}
 export interface backendInterface {
-    addCourse(code: string, name: string, semester: string, programme: string): Promise<void>;
-    addFeeType(name: string, amount: bigint, programme: string, session: string): Promise<void>;
-    addResult(studentId: string, courseIdParam: bigint, semester: string, grade: string, score: bigint): Promise<void>;
-    addStudentProfile(name: string, idNumber: string, email: string): Promise<void>;
-    applyForHostel(roomType: string, session: string): Promise<bigint>;
-    assignAccessRole(user: Principal, role: UserRole__1): Promise<void>;
+    approvePortalAccessApplication(appId: string): Promise<GeneratePasswordResponse>;
     assignCallerUserRole(user: Principal, role: UserRole__1): Promise<void>;
-    bootstrapAdmin(name: string, idNumber: string, email: string): Promise<void>;
-    checkAdmissionStatus(jambNumber: string): Promise<AdmissionStatus | null>;
-    checkAdmissionStatusByName(name: string): Promise<AdmissionStatus | null>;
-    checkUnpaidFees(): Promise<Array<FeeType>>;
     createCheckoutSession(items: Array<ShoppingItem>, successUrl: string, cancelUrl: string): Promise<string>;
-    deregisterCourse(courseIdParam: bigint): Promise<void>;
-    getAggregatedStudentData(): Promise<[Array<Result>, Array<PaymentRecord>]>;
-    getAllAdmissionApplications(): Promise<Array<AdmissionApplication>>;
-    getAllHostelApplications(): Promise<Array<HostelApplication>>;
-    getAllPayments(): Promise<Array<PaymentRecord>>;
-    getAllResults(): Promise<Array<Result>>;
-    getAllStudents(): Promise<Array<UserProfile>>;
-    getAllUserProfiles(): Promise<Array<UserProfile>>;
-    getAnnouncements(role: string): Promise<Array<Announcement>>;
-    getCallerRole(): Promise<UserRole | null>;
-    getCallerUserProfile(): Promise<UserProfile | null>;
     getCallerUserRole(): Promise<UserRole__1>;
-    getCourses(): Promise<Array<Course>>;
-    getFeeTypes(): Promise<Array<FeeType>>;
-    getMyHostelApplication(): Promise<HostelApplication | null>;
-    getPaymentHistory(): Promise<Array<PaymentRecord>>;
-    getRegisteredCourses(): Promise<Array<bigint>>;
-    getResults(): Promise<Array<Result>>;
-    getResultsForStudent(studentId: string): Promise<Array<Result>>;
+    getMyPortalAccessApplication(email: string): Promise<PortalAccessApplication | null>;
+    getPortalAccessApplications(): Promise<Array<PortalAccessApplication>>;
     getStripeSessionStatus(sessionId: string): Promise<StripeSessionStatus>;
-    getUserDashboard(): Promise<string>;
-    getUserProfile(user: Principal): Promise<UserProfile | null>;
     isCallerAdmin(): Promise<boolean>;
     isStripeConfigured(): Promise<boolean>;
-    linkParentToStudent(studentId: string): Promise<void>;
-    recordPayment(amount: bigint, reference: string | null, feeType: string): Promise<void>;
-    recordPaymentByAdmin(studentId: string, amount: bigint, reference: string, feeType: string): Promise<void>;
-    registerCourse(courseIdParam: bigint): Promise<void>;
-    registerProfile(role: UserRole, name: string, idNumber: string, email: string): Promise<void>;
-    saveCallerUserProfile(profile: UserProfile): Promise<void>;
-    sendAnnouncement(content: string, targetRole: string): Promise<void>;
+    loginWithIdAndPassword(roleId: string, password: string): Promise<{
+        __kind__: "ok";
+        ok: UserProfile;
+    } | {
+        __kind__: "err";
+        err: string;
+    }>;
+    rejectPortalAccessApplication(appId: string): Promise<void>;
     setStripeConfiguration(config: StripeConfiguration): Promise<void>;
-    submitApplication(name: string, jambNumber: string, oLevelResults: Array<string>, programmeChoice: string, documents: Array<string>): Promise<bigint>;
+    submitPortalAccessApplication(applicantName: string, email: string, role: PortalAccessRole, programmeOrDepartment: string | null): Promise<string>;
     transform(input: TransformationInput): Promise<TransformationOutput>;
-    updateAdmissionStatus(appId: bigint, status: AdmissionStatus): Promise<void>;
-    updateHostelApplicationStatus(appId: bigint, status: Variant_pending_approved_rejected): Promise<void>;
 }
